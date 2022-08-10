@@ -101,3 +101,7 @@ pi@raspberrypi:~$ ./setup.sh
 
 ### Current Errors:
  * The board does not return the ACKY to acept the offer
+
+### TODO
+ * Implement other Plugins
+ * Document the Project
