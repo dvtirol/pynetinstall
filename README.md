@@ -1,45 +1,48 @@
-# Dokumentation von MikroTik Netinstall auf dem Rapberry Pi
+# pyNetinstall
 
-## Notwendige Dienste am Raspberry:
-* dnsmasq für TFTP-Server
-* isc-dhcp-server
+How to run a flash using the pyNetinstall
 
-## Config am Raspberry Pi
-Die Configs der zwei Dienste sind unter der annahme entstanden, dass die IP-Addresse
-vom Raspberry `10.192.3.1` lautet. Um diese zu configurieren kann man den command 
-`sudo ip addr add 10.192.3.1/24 dev eth0` verwenden, jedoch ist diese dann nur
-temporär und ist beim nächsten neustart vom Raspi wieder weg und muss neu 
-hinterlegt werden. Man kann diese auch statisch Anlegen in dem man die config in
-das File `/etc/network/interfaces` schreibt. Dies könnte dann wie folgt aussehen:
+## What u need:
+* [Raspberry Pi 3](https://www.raspberrypi.com/products/) or newer
+* [Mikrotik Router Board](https://www.mikrotik-store.eu/en/MikroTik-CA150) or similar
 
-    # Ethernet
-    auto eth0
-    allow-hotplug eth0
-    iface eth0 inet static
-    address 10.192.3.1
-    netmask 255.255.255.0
-    gateway 10.192.3.1
-    dns-nameservers 10.192.3.2
+## Getting started
 
-## Logfile und Configfile
-Die Logfiles für den Dienst `dnsmasq` befinden sich in `/var/log/dnsmasq.log` und 
-für `isc.dhcp-server` können mit dem Befehl `journalctl -u isc-dhcp-server`
-ausgelesen werden.
+### setup.sh
 
-Die Configfile finden sich unter `/etc/dnsmasq.conf` für `dnsmasq` bzw. unter
-`/etc/dhcp/dhcpd.conf` für `isc-dhcp-server`. Der DHCP erkennt automatisch welchen Kernel 
-bereitzustellen ist anhand des `vendor-class-identifier`. In der Config müssen folgene Parameter angepasst werden:
-* `next-server`
-* `interfaces`
-* `subnet netmask`
-* `domain-name-server`
-* `router`
-* `broadcast-address`
-* `range dynamic-bootp`
-* und `pool range`
+```shell
+pi@raspberrypi:~$ chmod a+rx setup.sh
+pi@raspberrypi:~$ ./setup.sh
+```
 
-`isc-dhcp-server` Config:
-
+### step by step
+1. **Set up the Interface**
+   * Check your IP-Address with the following command\
+   `ip address`
+2. **Set up the TFTP-Server**
+   * Install [dnsmasq](https://wiki.archlinux.org/title/dnsmasq)\
+   `sudo apt install dnsmasq`
+   * Update the Configuration File -> `/etc/dnsmasq.conf`
+   ```editorconfig
+    ##/etc/dhcp/dhcpd.conf
+    enable-tftp
+    tftp-root=/var/lib/misc/
+    tftp-no-blocksize
+    interface=eth0
+    log-facility=/var/log/dnsmasq.log
+   ```
+   Add these lines to the end of the file
+  
+   * Start the service\
+   `sudo systemctl start dnsmasq`
+   * Check if the service is running\
+   `sudo systemctl status dnsmasq`\
+   If you can see a **RUNNING** the service successfully started
+3. **Set up the DHCP-Server** 
+   * Install [isc-dhcp-server](https://www.isc.org/dhcp/)
+   * Update the Configuration File -> `/etc/dhcp/dhcpd.conf`
+    ```editorconfig
+    ##/etc/dnsmasq.conf
     ddns-update-style interim;
     default-lease-time 300;
     max-lease-time 600;
@@ -47,7 +50,7 @@ bereitzustellen ist anhand des `vendor-class-identifier`. In der Config müssen 
     allow booting;
     allow bootp;
     ##tftp server is located on the edge provisioning device
-    next-server 10.192.3.1;
+    next-server <YOUR IP-ADDRESS>;
     interfaces="eth0";
 
     class "mmipsBoot" {
@@ -60,17 +63,17 @@ bereitzustellen ist anhand des `vendor-class-identifier`. In der Config müssen 
             match if substring(option vendor-class-identifier, 0, 9) = "Mips_boot";
     }
 
-    subnet 10.192.3.0 netmask 255.255.255.0 {
+    subnet <YOUR SUBNET> netmask <YOUR NETMASK> {
 
-            option domain-name-servers 10.192.1.2, 10.192.1.3;
-            option routers 10.192.3.1;
-            option broadcast-address 10.192.3.255;
+            option domain-name-servers <DNS-SERVER IP-ADDRESS>, <DNS-SERVER IP-ADDRESS>;
+            option routers <ROUTER IP-ADDRESS>;
+            option broadcast-address <BROADCAST IP-ADDRESS>;
             pool {
                     allow dynamic bootp clients;
                     allow members of "mmipsBoot";
                     allow members of "armBoot";
                     allow members of "Mips_boot";
-                    range dynamic-bootp 10.192.3.51 10.192.3.150;
+                    range dynamic-bootp <START-ADDRESS DYNAMIC-BOOTP> <END-ADDRESS DYNAMIC-BOOTP>;
 
                     if substring(option vendor-class-identifier, 0, 9) = "MMipsBoot" {
                         filename "mmips_boot_6.42.5";
@@ -81,42 +84,20 @@ bereitzustellen ist anhand des `vendor-class-identifier`. In der Config müssen 
                     }
             }
             pool {
-                    range 10.192.3.151 10.192.3.250;
+                    range <START-ADDRESS POOL> <END-ADDRESS POOL>;
             }
     }
+   ```
+   
+   * Start the service\
+   `sudo systemctl start isc-dhcp-server`
+   * Check if the service is running\
+   `sudo systemctl status isc-dhcp-server`
 
-`dnsmasq` Config:
+4. **Clone this Repository to your Raspberry Pi**
+   * Use [git](https://git-scm.com/docs/git-clone) commands to clone the Repository to your local device\
+   `git clone https://github.com/dvtirol/pynetinstall`
+5. **Update the ___config.ini___**
 
-Diese Zeilen am Ende vom File einfügen:
-
-	enable-tftp
-	tftp-root=/var/lib/misc/
-	tftp-no-blocksize
-	interface=eth0
-	log-facility=/var/log/dnsmasq.log
-
-**Wichtig:** Die Kernel Files für den MikroTik müssen im `tftp-root` Ordner liegen, 
-ansosnten kann der DHCP Server finden. Standartmässig ist der der Root Ordner in 
-`/var/lib/misc` zu finden.
-
-## Mikrotik flashen
-Zum flashen von einem Gerät werden keine Root Rechte benötigt, man muss die python 
-Datei `flash.py` lediglich wie folget ausführen:
-`python flash.py /PATH/TO/FLASH-FILE.npk /PATH/TO/CONFIG-FILE.rsc`
-
-**Wichtig:** das Programm prüft die Dateiendungen und müssen deshalb genau
-wie oben angegeben werden.
-
-Das Programm sucht sich die IP Addresse und MAC Addresse vom Server als auch
-die vom Miktotik selbständig. Der MikroTik muss im netinstall Modus sein damit 
-dies funktioniert.
-
-## Bekannte Fehler (Stand 04.08.2022)
-### MikoTik Bootloader Error UDP1:
-Wenn dieser Fehler meist auf wenn der TFTP Server neu gestartet wird.
-Zum lösen des Problemes sind folgende Schritte zu tätigen:
-
-* Beim Booten vom Mirkotik das Bootprotokoll unter dem Punkt 
- `p - boot protocol` auf `2 - dhcp protocol` umstellen
-* Dannach versuchen über DHCP den netinstall auszuführen, dieser wird fehlschlagen
-* Beim erneuten booten das Bootprotokoll wieder auf `1 - bootp protocol` zurückstellen
+### Current Errors:
+ * The board does not return the ACKY to acept the offer
