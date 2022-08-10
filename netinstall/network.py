@@ -47,14 +47,14 @@ class UDPConnection(socket.socket):
         print(f"SAME DATA {data == self._last_message} -> {data} - {self._last_message}")
         if data.startswith(bytes(self.mac)) or data == self._last_message:
             print("Read Startswith")
-            self.read(pos, check_mac, mac)
             self._repeat += 1
+            return self.read(pos, check_mac, mac)
         else:
             header_mac: bytes = data[:6]
             header_pos: list[int] = [struct.unpack(">H", data[16:18])[0], struct.unpack(">H", data[18:20])[0]]
             if header_pos == [256, 0] and pos != header_pos:
-                self.read(pos, check_mac, mac)
                 self._repeat += 1
+                return self.read(pos, check_mac, mac)
             print(header_pos)
         print(f"Positions: {header_pos == pos} -> {header_pos} == {pos}")
         if header_pos == pos:
@@ -88,7 +88,7 @@ class UDPConnection(socket.socket):
         To send Broadcast messages with a socket it is required to enable the `socket.SO_BROADCAST` option.
         """
         self.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        message = bytes(self.mac) + bytes(self.dev_mac) + b"0000" + bytes(len(data)) + bytes(positions[0]) + bytes(positions[1]) + data
+        message = self.mac + self.dev_mac + b"0000" + bytes(len(data)) + bytes(positions[0]) + bytes(positions[1]) + data
         print(f"Write: {message}")
         self.sendto(message, recv_addr)
         self._last_message = message
@@ -113,7 +113,8 @@ class UDPConnection(socket.socket):
          - minOS: str (e.g.: 6.45.9)
         """
         print("Searching for a Device...")
-        data, _, mac = self.read([256, 0], mac=True)
+        data, _, self.dev_mac = self.read([256, 0], mac=True)
+        print(f"MAC Address: \n - Raspberry: {self.mac}\n - Board: {self.dev_mac}")
         print("Device Found")
         infoData = data[20:]
         rows = infoData.split(b"\n")
@@ -132,8 +133,8 @@ class UDPConnection(socket.socket):
             print("device mac:", mac)
             print("lic key:", lic_key)
             print("lic id:", lic_id)"""
-            print(f"Device Search: {mac}, {rows[3].decode()}, {rows[4].decode()}, {rows[5].decode()}")
-            self.dev_mac = mac
-            return mac, rows[3].decode(), rows[4].decode(), rows[5].decode()
+            print(f"Device Search: {self.dev_mac}, {rows[3].decode()}, {rows[4].decode()}, {rows[5].decode()}")
+            self.dev_mac = self.dev_mac
+            return self.dev_mac, rows[3].decode(), rows[4].decode(), rows[5].decode()
         else:
             raise Exception("Discovery Error: No data found")
