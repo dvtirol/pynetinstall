@@ -105,3 +105,5 @@ pi@raspberrypi:~$ ./setup.sh
 ### TODO
  * Implement other Plugins
  * Document the Project
+ * Check if 255.255.255.255 or 10.192.3.255 is the Broadcast
+    * Currently only 10.192.3.255 is able to send to the board

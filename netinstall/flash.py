@@ -24,13 +24,23 @@ class Flasher:
     During the installation the Raspberry Pi is connected to the board
     over a UDP-socket (`netinstall.network.UDPConnection`)
 
-
+    Overview of the States
+                    Raspi Side                            Boad Side
+    1       The Raspi Offered the flash         The Board Acknoleged the flash
+    2        Tells the Board to Format               Formated the Board
+    3       
 
     """
+
+    # The socket connection to the board
     conn: UDPConnection
+    # The mac address of the board
     dev_mac: bytes
+    # The current state of the flash [Raspi State, Board State]
     pos: tuple
+    # The Plugin class
     plugin: Plugin
+    # Max amout of Bytes the Server can receive at once
     MAX_BYTES: int = 1024
 
     def __init__(self) -> None:
@@ -86,6 +96,7 @@ class Flasher:
     def do(self, data: bytes, response: bytes = None):
         # try:
         print(f"1_ Do: {data}")
+        self.pos[0] += 1
         self.write(data)
         print("2_ Waiting")
         self.wait()

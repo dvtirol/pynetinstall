@@ -42,7 +42,6 @@ class UDPConnection(socket.socket):
         """
         print("Started Reading...")
         data = self.recv(self.MAX_BYTES_RECV)
-        print(f"Read Data{data}")
         header_pos = []
         print(f"SAME DATA {data == self._last_message} -> {data} - {self._last_message}")
         if data.startswith(bytes(self.mac)) or data == self._last_message:
@@ -88,7 +87,7 @@ class UDPConnection(socket.socket):
         To send Broadcast messages with a socket it is required to enable the `socket.SO_BROADCAST` option.
         """
         self.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        message = self.mac + self.dev_mac + b"0000" + bytes(len(data)) + bytes(positions[0]) + bytes(positions[1]) + data
+        message = self.mac + self.dev_mac + int(0).to_bytes(2, "big") + len(data).to_bytes(2, "big") + positions[0].to_bytes(2, "big") + positions[1].to_bytes(2, "big") + data
         print(f"Write: {message}")
         self.sendto(message, recv_addr)
         self._last_message = message
