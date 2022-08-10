@@ -1,0 +1,174 @@
+import importlib
+
+from time import sleep
+from configparser import ConfigParser
+
+from netinstall.network import UDPConnection
+from netinstall.plugins.simple import Plugin
+
+
+class Flasher:
+    """
+    Object to flash configurations on a Mikrotik routerboard
+
+    To run the flash simply use the .run() function.
+
+    The .run() executes following steps:
+    1. Offer the Configuration to the routerboard
+    2. Formats the routerboard that the new Configuration can be flashed
+    3. Sends the .npk file
+    4. Sends the .rsc file
+    5. Tells the board that the files can now be installed
+    6. Restarts the board
+
+    During the installation the Raspberry Pi is connected to the board
+    over a UDP-socket (`netinstall.network.UDPConnection`)
+
+
+
+    """
+    conn: UDPConnection
+    dev_mac: bytes
+    pos: tuple
+    plugin: Plugin
+    MAX_BYTES: int = 1024
+
+    def __init__(self) -> None:
+        self.conn = UDPConnection()
+        self.pos = [0, 0]
+        self.plugin = self.load_config()
+
+    def load_config(self, filename: str = "config.ini") -> tuple:
+        self.dev_mac, model, arch, min_os = self.conn.get_device_info()
+        """ 
+        Resolve the Plugin from the Configuration
+
+        Arguments:
+            filename (str): The location of the Configuration file (default=config.ini)
+
+        Returns:
+            The Plugin defined in the Configuration file including the configuration
+        """
+        cparser = ConfigParser()
+        if not cparser.read(filename):
+            raise FileNotFoundError("Configuration not found")
+        cparser.sections()
+        mod, _, cls = cparser["pynetinstall"]["plugin"].partition(":")
+        Plugin = getattr(importlib.import_module(mod, __name__), cls)
+        return Plugin(config=cparser)
+
+    def write(self, data: bytes) -> None:
+        self.conn.write(data, self.pos)
+
+    def read(self, mac: bool = False) -> None:
+        self.conn.read(self.pos, self.dev_mac, mac)
+
+    def run(self) -> None:
+        # Offer the flash
+        print("Sent the offer to flash")
+        self.do(b"OFFR\n\n", b"YACK\n")
+        # Format the board
+        print("Formatting the board")
+        self.do(b"", b"STRT")
+        # Spacer to give the board some time to prepare for the file
+        print("Spacer")
+        self.do(b"", b"RETR")
+        # Send the files
+        print("Files")
+        self.do_files()
+        # Tell the board that the installation is done
+        print("Installation Done")
+        self.do(b"FILE\n", b"WTRM")
+        # Tell the board that it can now reboot and load the files
+        print("Reboot")
+        self.do(b"TERM\nInstallation successful\n")
+
+    def do(self, data: bytes, response: bytes = None):
+        # try:
+        print(f"1_ Do: {data}")
+        self.write(data)
+        print("2_ Waiting")
+        self.wait()
+
+        if response is None:
+            print("3_ Response None")
+            return True
+        else:
+            print("3_ Get Response")
+            try:
+                res = self.read()
+            except:
+                res = self.read()
+            print(f"4_ Response {res}\n{response}")
+            return True if response == res[20:] else False
+        """except Exception as e:
+            exc_type, exc_object, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(e, "-", fname, "on line", exc_tb.tb_lineno)"""
+
+    def do_file(self, file, max_pos: bytes):
+        file_pos = 0
+        while True:
+            data = file.read(self.MAX_BYTES)
+            self.write(data)
+
+            file_pos = file_pos + len(data)
+            if file_pos >= max_pos:
+                # try:
+                resp = self.wait()
+
+                # check
+                res = self.read()
+                print(res)
+                return True if b"RETR" == res[20:] else False
+                """except Exception as e:
+                    exc_type, exc_object, exc_tb = sys.exc_info()
+                    fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                    print(e, "-", fname, "on line", exc_tb.tb_lineno)
+                    break"""
+            else:
+                # dieses sleep ist der hauptgrund wieso das file so lange zum
+                # flashen braucht. je niedrieger desto schneller
+                # kann zu position errors durch timing issues fuehren
+                sleep(35 / 10000)
+
+    def do_files(self):
+        npk, rsc = self.plugin.get_files()
+
+        # Send the .npk file
+        name = npk[1].split("\\")
+        if isinstance(name, list):
+            name = name[-1]
+        else:
+            name = npk[1].split("/")
+            if isinstance(name, list):
+                name = name[-1]
+            else:
+                name = npk[1]
+        self.do(bytes(f"FILE\n{name}\n{str(npk[2])}\n", "utf-8"), b"RETR")
+        self.do_file(npk[0], npk[2])
+
+        self.do(b"", b"RETR")
+
+        # Send the .rsc file
+        name = rsc[1].split("\\")
+        if isinstance(name, list):
+            name = name[-1]
+        else:
+            name = rsc[1].split("/")
+            if isinstance(name, list):
+                name = name[-1]
+            else:
+                name = rsc[1]
+        self.do(bytes(f"FILE\n{name}\n{str(rsc[2])}\n", "utf-8"), b"RETR")
+        self.do_file(rsc[0], rsc[2])
+
+        self.do(b"", b"RETR")
+
+    def wait(self):
+        print("2_1_ Wait")
+        dta, self.pos = self.read()
+        print(f"2_2_ Received Data {dta}")
+        dta = dta[40:]
+        return dta
+
