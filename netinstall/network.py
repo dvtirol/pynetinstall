@@ -21,6 +21,7 @@ class UDPConnection(socket.socket):
         self.MAX_ERRORS = error_repeat
         self.MAX_BYTES_RECV = 1024
         self.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
         self.bind(addr)
         self._get_source_mac()
 
@@ -50,7 +51,7 @@ class UDPConnection(socket.socket):
             return self.read(pos, check_mac, mac)
         else:
             header_mac: bytes = data[:6]
-            header_pos: list[int] = [struct.unpack(">H", data[16:18])[0], struct.unpack(">H", data[18:20])[0]]
+            header_pos: list[int] = [struct.unpack("<H", data[16:18])[0], struct.unpack("<H", data[18:20])[0]]
             if header_pos == [256, 0] and pos != header_pos:
                 self._repeat += 1
                 return self.read(pos, check_mac, mac)
@@ -86,8 +87,7 @@ class UDPConnection(socket.socket):
 
         To send Broadcast messages with a socket it is required to enable the `socket.SO_BROADCAST` option.
         """
-        self.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        message = self.mac + self.dev_mac + int(0).to_bytes(2, "big") + len(data).to_bytes(2, "big") + positions[0].to_bytes(2, "big") + positions[1].to_bytes(2, "big") + data
+        message = self.mac + self.dev_mac + int(0).to_bytes(2, "little") + len(data).to_bytes(2, "little") + positions[0].to_bytes(2, "little") + positions[1].to_bytes(2, "little") + data
         print(f"Write: {message}")
         self.sendto(message, recv_addr)
         self._last_message = message
@@ -112,7 +112,7 @@ class UDPConnection(socket.socket):
          - minOS: str (e.g.: 6.45.9)
         """
         print("Searching for a Device...")
-        data, _, self.dev_mac = self.read([256, 0], mac=True)
+        data, _, self.dev_mac = self.read([1, 0], mac=True)
         print(f"MAC Address: \n - Raspberry: {self.mac}\n - Board: {self.dev_mac}")
         print("Device Found")
         infoData = data[20:]
