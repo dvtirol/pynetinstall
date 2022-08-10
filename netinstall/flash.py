@@ -71,7 +71,8 @@ class Flasher:
         self.conn.write(data, self.pos)
 
     def read(self, mac: bool = False) -> None:
-        self.conn.read(self.pos, self.dev_mac, mac)
+        print(self.pos)
+        return self.conn.read(self.pos, self.dev_mac, mac)
 
     def run(self) -> None:
         # Offer the flash
@@ -106,12 +107,13 @@ class Flasher:
             return True
         else:
             print("3_ Get Response")
-            try:
-                res = self.read()
-            except:
-                res = self.read()
+            res = self.read()
             print(f"4_ Response {res}\n{response}")
-            return True if response == res[20:] else False
+            if response == res[20:]:
+                self.pos[1] += 1
+                return False
+            else:
+                return False
         """except Exception as e:
             exc_type, exc_object, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
