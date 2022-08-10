@@ -88,7 +88,7 @@ class UDPConnection(socket.socket):
         To send Broadcast messages with a socket it is required to enable the `socket.SO_BROADCAST` option.
         """
         message = self.mac + self.dev_mac + int(0).to_bytes(2, "little") + len(data).to_bytes(2, "little") + positions[0].to_bytes(2, "little") + positions[1].to_bytes(2, "little") + data
-        print(f"Write: {message}")
+        print(f"Write: {len(message)} bytes")
         self.sendto(message, recv_addr)
         self._last_message = message
 
