@@ -70,7 +70,7 @@ class Flasher:
     def write(self, data: bytes) -> None:
         self.conn.write(data, self.pos)
 
-    def read(self, mac: bool = False) -> None:
+    def read(self, mac: bool = False) -> tuple:
         print(self.pos)
         return self.conn.read(self.pos, self.dev_mac, mac)
 
@@ -179,9 +179,5 @@ class Flasher:
         self.do(b"", b"RETR")
 
     def wait(self):
-        print("2_1_ Wait")
-        dta, self.pos = self.read()
-        print(f"2_2_ Received Data {dta}")
-        dta = dta[40:]
-        return dta
+        self.read()
 
