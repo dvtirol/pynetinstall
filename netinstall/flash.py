@@ -77,27 +77,34 @@ class Flasher:
     def run(self) -> None:
         # Offer the flash
         print("Sent the offer to flash")
-        self.do(b"OFFR\n\n", b"YACK\n")
+        self.pos[0] += 1
+        while not self.do(b"OFFR\n\n", b"YACK\n"):
+            pass
         # Format the board
         print("Formatting the board")
+        self.pos[0] += 1
         self.do(b"", b"STRT")
         # Spacer to give the board some time to prepare for the file
         print("Spacer")
+        self.pos[0] += 1
         self.do(b"", b"RETR")
         # Send the files
         print("Files")
+        self.pos[0] += 1
         self.do_files()
         # Tell the board that the installation is done
         print("Installation Done")
+        self.pos[0] += 1
         self.do(b"FILE\n", b"WTRM")
         # Tell the board that it can now reboot and load the files
         print("Reboot")
+        self.pos[0] += 1
         self.do(b"TERM\nInstallation successful\n")
 
     def do(self, data: bytes, response: bytes = None):
         # try:
         print(f"1_ Do: {data}")
-        self.pos[0] += 1
+        # self.pos[0] += 1
         self.write(data)
         print("2_ Waiting")
         self.wait()
@@ -107,11 +114,11 @@ class Flasher:
             return True
         else:
             print("3_ Get Response")
-            res = self.read()
-            print(f"4_ Response {res}\n{response}")
-            if response == res[20:]:
+            res, self.pos = self.read()
+            print(f"4_ Response {res[14:]}\n{response}")
+            if response == res[14:]:
                 self.pos[1] += 1
-                return False
+                return True
             else:
                 return False
         """except Exception as e:
@@ -179,5 +186,6 @@ class Flasher:
         self.do(b"", b"RETR")
 
     def wait(self):
+        self.pos[1] = self.pos[0]
         self.read()
 
