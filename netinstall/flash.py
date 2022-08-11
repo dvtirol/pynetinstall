@@ -188,8 +188,8 @@ class Flasher:
         print(f"1_ Do: {data}")
         self.write(data)
         # self.state[1] = self.state[0]
-        # print("2_ Waiting")
-        # self.wait()
+        print("2_ Waiting")
+        self.wait()
 
         if response is None:
             print("3_ Response None")
@@ -208,7 +208,7 @@ class Flasher:
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
             print(e, "-", fname, "on line", exc_tb.tb_lineno)"""
 
-    def do_file(self, file, max_pos: bytes) -> None:
+    def do_file(self, file, max_pos: int) -> None:
         """
         Send one file to the Device.
         It sends multiple smaller Packets because of the `MAX_BYTES`
@@ -218,7 +218,7 @@ class Flasher:
 
         file : IO
             A File object to send to the Device
-        max_pos : bytes
+        max_pos : int
             The lenght of the file to check when the whole file is sent
         """
         file_pos = 0
@@ -259,7 +259,7 @@ class Flasher:
         npk, rsc = self.plugin.get_files()
 
         # Send the .npk file
-        name = npk[1].split("\\")
+        """name = npk[1].split("\")
         if isinstance(name, list):
             name = name[-1]
         else:
@@ -267,14 +267,14 @@ class Flasher:
             if isinstance(name, list):
                 name = name[-1]
             else:
-                name = npk[1]
-        self.do(bytes(f"FILE\n{name}\n{str(npk[2])}\n", "utf-8"), b"RETR")
+                name = npk[1]"""
+        self.do(bytes(f"FILE\n{npk[1]}\n{str(npk[2])}\n", "utf-8"), b"RETR")
         self.do_file(npk[0], npk[2])
 
         self.do(b"", b"RETR")
 
         # Send the .rsc file
-        name = rsc[1].split("\\")
+        """name = rsc[1].split("\\")
         if isinstance(name, list):
             name = name[-1]
         else:
@@ -282,8 +282,8 @@ class Flasher:
             if isinstance(name, list):
                 name = name[-1]
             else:
-                name = rsc[1]
-        self.do(bytes(f"FILE\n{name}\n{str(rsc[2])}\n", "utf-8"), b"RETR")
+                name = rsc[1]"""
+        self.do(bytes(f"FILE\n{rsc[1]}\n{str(rsc[2])}\n", "utf-8"), b"RETR")
         self.do_file(rsc[0], rsc[2])
 
         self.do(b"", b"RETR")
