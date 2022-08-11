@@ -1,11 +1,16 @@
 #!/bin/sh
 
+echo "Check if the required Services are installed"
+if systemctl status isc-dhcp-server | grep "not-found" &> /dev/null ; then
+    echo "Installing the DHCP-Server..."
+    sudo apt-get -y install isc-dhcp-server
+else
+    echo "DHCP-Server is already installed!"
+if lsmod | grep "" &> /dev/null ; then
+    echo "Installing the TFTP-Server..."
+    sudo apt-get -y install dnsmasq
+else
+    echo "TFTP-Server is already installed!"
 
-if lsmod | grep "isc-dhcp-server" &> /dev/null ; then
-    pass
-else
-    sudo systemctl restart isc-dhcp-server
-if lsmod | grep "isc-dhcp-server" &> /dev/null ; then
-    pass
-else
-    sudo systemctl restart dnsmasq
+sudo cp /home/pi/pyNetinstall/configs/dhcpd.conf /etc/dhcp/dhcpd.conf
+sudo cp /home/pi/pyNetinstall/configs/dnsmasq.conf /etc/dnsmasq.conf
