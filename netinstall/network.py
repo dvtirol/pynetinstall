@@ -116,7 +116,7 @@ class UDPConnection(socket.socket):
         print(f"SAME DATA {data == self._last_message} -> {data} - {self._last_message}")
         if data != self._last_message:
             header_mac: bytes = data[:6]
-            header_state: list[int] = [*struct.unpack("<H<H", data[16:20])]
+            header_state: list[int] = [*struct.unpack("<HH", data[16:20])]
             print(header_state)
             print(f"Positions: {header_state == state} -> {header_state} == {state}")
             # Header countet + 1
@@ -158,7 +158,7 @@ class UDPConnection(socket.socket):
             A Address pair to where the Connection sends the data to (default: ("255.255.255.255, 5000))
         """
         # message = self.mac + self.dev_mac + int(0).to_bytes(2, "little") + len(data).to_bytes(2, "little") + state[0].to_bytes(2, "little") + state[1].to_bytes(2, "little") + data
-        message = self.mac + self.dev_mac + struct.pack("<H<H<H<H", 0, len(data), state[1], state[0]) + data
+        message = self.mac + self.dev_mac + struct.pack("<HHHH", 0, len(data), state[1], state[0]) + data
         print(f"Write: {len(message)} bytes")
         self.sendto(message, recv_addr)
         self._last_message = message
