@@ -23,13 +23,6 @@ class Flasher:
 
     During the installation the Raspberry Pi is connected to the board
     over a UDP-socket (`netinstall.network.UDPConnection`)
-
-    Overview of the States
-                    Raspi Side                            Boad Side
-    1       The Raspi Offered the flash         The Board Acknoleged the flash
-    2        Tells the Board to Format               Formated the Board
-    3       
-
     """
 
     # The socket connection to the board
@@ -37,7 +30,7 @@ class Flasher:
     # The mac address of the board
     dev_mac: bytes
     # The current state of the flash [Raspi State, Board State]
-    pos: tuple
+    state: list
     # The Plugin class
     plugin: Plugin
     # Max amout of Bytes the Server can receive at once
@@ -45,7 +38,7 @@ class Flasher:
 
     def __init__(self) -> None:
         self.conn = UDPConnection()
-        self.pos = [0, 0]
+        self.state = [0, 0]
         self.plugin = self.load_config()
 
     def load_config(self, filename: str = "config.ini") -> tuple:
@@ -68,56 +61,57 @@ class Flasher:
         return Plugin(config=cparser)
 
     def write(self, data: bytes) -> None:
-        self.conn.write(data, self.pos)
+        self.conn.write(data, self.state)
 
     def read(self, mac: bool = False) -> tuple:
-        print(self.pos)
-        return self.conn.read(self.pos, self.dev_mac, mac)
+        print(self.state)
+        return self.conn.read(self.state, self.dev_mac, mac)
 
     def run(self) -> None:
         # Offer the flash
         print("Sent the offer to flash")
-        self.pos[0] += 1
+        self.state[0] += 1
         while not self.do(b"OFFR\n\n", b"YACK\n"):
             pass
         # Format the board
         print("Formatting the board")
-        self.pos[0] += 1
+        self.state[0] += 1
         self.do(b"", b"STRT")
         # Spacer to give the board some time to prepare for the file
         print("Spacer")
-        self.pos[0] += 1
+        self.state[0] += 1
         self.do(b"", b"RETR")
         # Send the files
         print("Files")
-        self.pos[0] += 1
+        self.state[0] += 1
         self.do_files()
         # Tell the board that the installation is done
         print("Installation Done")
-        self.pos[0] += 1
+        self.state[0] += 1
         self.do(b"FILE\n", b"WTRM")
         # Tell the board that it can now reboot and load the files
         print("Reboot")
-        self.pos[0] += 1
+        self.state[0] += 1
         self.do(b"TERM\nInstallation successful\n")
 
     def do(self, data: bytes, response: bytes = None):
         # try:
         print(f"1_ Do: {data}")
-        # self.pos[0] += 1
         self.write(data)
-        print("2_ Waiting")
-        self.wait()
+        self.write(data)
+        self.state[1] = self.state[0]
+        # print("2_ Waiting")
+        # self.wait()
 
         if response is None:
             print("3_ Response None")
             return True
         else:
             print("3_ Get Response")
-            res, self.pos = self.read()
+            res, self.state = self.read()
             print(f"4_ Response {res[14:]}\n{response}")
             if response == res[14:]:
-                self.pos[1] += 1
+                self.state[1] += 1
                 return True
             else:
                 return False
@@ -186,6 +180,5 @@ class Flasher:
         self.do(b"", b"RETR")
 
     def wait(self):
-        self.pos[1] = self.pos[0]
         self.read()
 

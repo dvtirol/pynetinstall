@@ -32,7 +32,7 @@ class UDPConnection(socket.socket):
         arg = struct.pack('256s', bytes(self._interface_name, 'utf-8')[:15])
         self.mac = fcntl.ioctl(self.fileno(), 0x8927, arg)[18:24]
 
-    def read(self, pos: tuple, check_mac: bytes = None, mac: bool = False) -> tuple:
+    def read(self, state: tuple, check_mac: bytes = None, mac: bool = False) -> tuple:
         if self._repeat > self.MAX_ERRORS:
             raise Exception(f"The function was called more than {self.MAX_ERRORS} times")
         """
@@ -48,16 +48,16 @@ class UDPConnection(socket.socket):
         if data.startswith(bytes(self.mac)) or data == self._last_message:
             print("Read Startswith")
             self._repeat += 1
-            return self.read(pos, check_mac, mac)
+            return self.read(state, check_mac, mac)
         else:
             header_mac: bytes = data[:6]
             header_pos: list[int] = [struct.unpack("<H", data[16:18])[0], struct.unpack("<H", data[18:20])[0]]
-            if header_pos == [256, 0] and pos != header_pos:
+            if header_pos == [256, 0] and state != header_pos:
                 self._repeat += 1
-                return self.read(pos, check_mac, mac)
+                return self.read(state, check_mac, mac)
             print(header_pos)
-        print(f"Positions: {header_pos == pos} -> {header_pos} == {pos}")
-        if header_pos == pos:
+        print(f"Positions: {header_pos == state} -> {header_pos} == {state}")
+        if header_pos == state:
             print(f"MAC: {check_mac == header_mac} -> {check_mac} == {header_mac}")
             if check_mac is not None:
                 print("CHECK_MAC")
@@ -80,15 +80,15 @@ class UDPConnection(socket.socket):
                 return data[6:], header_pos
         else:
             self._repeat += 1
-            self.read(pos, check_mac, mac)
+            self.read(state, check_mac, mac)
 
-    def write(self, data: bytes, positions: list, recv_addr: tuple = ("255.255.255.255", 5000)) -> None:
+    def write(self, data: bytes, state: list, recv_addr: tuple = ("255.255.255.255", 5000)) -> None:
         """
         Write a Broadcast message to all the connected devices including the data.
 
         To send Broadcast messages with a socket it is required to enable the `socket.SO_BROADCAST` option.
         """
-        message = self.mac + self.dev_mac + int(0).to_bytes(2, "little") + len(data).to_bytes(2, "little") + positions[0].to_bytes(2, "little") + positions[1].to_bytes(2, "little") + data
+        message = self.mac + self.dev_mac + int(0).to_bytes(2, "little") + len(data).to_bytes(2, "little") + state[0].to_bytes(2, "little") + state[1].to_bytes(2, "little") + data
         print(f"Write: {len(message)} bytes")
         self.sendto(message, recv_addr)
         self._last_message = message
