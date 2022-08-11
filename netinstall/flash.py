@@ -134,6 +134,7 @@ class Flasher:
 
          - bytes: The Data received
          - list: The Position the Device returned
+
         Optional (when mac is True)
          - bytes: The Mac address of the Device
         """

@@ -103,6 +103,7 @@ class UDPConnection(socket.socket):
         
          - bytes: The data received from the Device
          - list: The State displayed in the Header of the UDPPacket
+
         Optional (When `mac` is True)
          - bytes: The MAC Address of the Source
         """
@@ -113,7 +114,10 @@ class UDPConnection(socket.socket):
         data = self.recv(self.MAX_BYTES_RECV)
         header_state = []
         print(f"SAME DATA {data == self._last_message} -> {data} - {self._last_message}")
-        if data != self._last_message:
+        if data == self._last_message:
+            self._repeat += 1
+            self.read(state, check_mac, mac)
+        else:
             header_mac: bytes = data[:6]
             header_state: list[int] = [struct.unpack("<H", data[16:18])[0], struct.unpack("<H", data[18:20])[0]]
             print(header_state)
