@@ -60,7 +60,7 @@ class Flasher:
 
     conn: UDPConnection
     dev_mac: bytes
-    state: list = [1, 0]
+    state: list = [0, 0]
     plugin: Plugin
     MAX_BYTES: int = 1024
 
@@ -184,10 +184,10 @@ class Flasher:
             What to expect as a Response from the Device (default: None)
         """
         # try:
+        self.state[1] += 1
         print(f"1_ Do: {data}")
         self.write(data)
-        self.write(data)
-        self.state[1] = self.state[0]
+        # self.state[1] = self.state[0]
         # print("2_ Waiting")
         # self.wait()
 
@@ -199,7 +199,7 @@ class Flasher:
             res, self.state = self.read()
             print(f"4_ Response {res[14:]}\n{response}")
             if response == res[14:]:
-                self.state[1] += 1
+                
                 return True
             else:
                 return False

@@ -108,21 +108,20 @@ class UDPConnection(socket.socket):
          - bytes: The MAC Address of the Source
         """
         if self._repeat > self.MAX_ERRORS:
-            raise Exception(f"The function was called more than {self.MAX_ERRORS} times")
+            raise Exception(f"The function was called more than {self.MAX_ERRORS} times for the execution of the {state} State")
         
         print("Started Reading...")
         data = self.recv(self.MAX_BYTES_RECV)
         header_state = []
         print(f"SAME DATA {data == self._last_message} -> {data} - {self._last_message}")
-        if data == self._last_message:
-            self._repeat += 1
-            self.read(state, check_mac, mac)
-        else:
+        if data != self._last_message:
             header_mac: bytes = data[:6]
-            header_state: list[int] = [struct.unpack("<H", data[16:18])[0], struct.unpack("<H", data[18:20])[0]]
+            header_state: list[int] = [*struct.unpack("<H<H", data[16:20])]
             print(header_state)
             print(f"Positions: {header_state == state} -> {header_state} == {state}")
-            if header_state == state:
+            # Header countet + 1
+            # or they are the same when no data was sent just the information is spammed by the Device
+            if (header_state[0] - 1 == state[0] and header_state[1] == state[1]) or (header_state == state and self._last_message is None):
                 print(f"MAC: {check_mac == header_mac} -> {check_mac} == {header_mac}")
                 if check_mac is not None:
                     print("CHECK_MAC")
@@ -142,7 +141,7 @@ class UDPConnection(socket.socket):
                     print(f"MAC-False: {data[6:]}, {header_state}")
                     return data[6:], header_state
         self._repeat += 1
-        self.read(state, check_mac, mac)
+        return self.read(state, check_mac, mac)
 
     def write(self, data: bytes, state: list, recv_addr: tuple = ("255.255.255.255", 5000)) -> None:
         """
@@ -158,7 +157,8 @@ class UDPConnection(socket.socket):
         recv_addr : tuple
             A Address pair to where the Connection sends the data to (default: ("255.255.255.255, 5000))
         """
-        message = self.mac + self.dev_mac + int(0).to_bytes(2, "little") + len(data).to_bytes(2, "little") + state[0].to_bytes(2, "little") + state[1].to_bytes(2, "little") + data
+        # message = self.mac + self.dev_mac + int(0).to_bytes(2, "little") + len(data).to_bytes(2, "little") + state[0].to_bytes(2, "little") + state[1].to_bytes(2, "little") + data
+        message = self.mac + self.dev_mac + struct.pack("<H<H<H<H", 0, len(data), state[1], state[0]) + data
         print(f"Write: {len(message)} bytes")
         self.sendto(message, recv_addr)
         self._last_message = message
