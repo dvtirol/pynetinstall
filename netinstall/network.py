@@ -79,9 +79,10 @@ class UDPConnection(socket.socket):
                 print(f"MAC-False: {data[6:]}, {header_pos}")
                 return data[6:], header_pos
         else:
-            raise Exception("Position Error")
+            self._repeat += 1
+            self.read(pos, check_mac, mac)
 
-    def write(self, data: bytes, positions: list, recv_addr: tuple = ("10.192.3.255", 5000)) -> None:
+    def write(self, data: bytes, positions: list, recv_addr: tuple = ("255.255.255.255", 5000)) -> None:
         """
         Write a Broadcast message to all the connected devices including the data.
 
