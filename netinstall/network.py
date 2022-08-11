@@ -43,7 +43,7 @@ class UDPConnection(socket.socket):
         """
         print("Started Reading...")
         data = self.recv(self.MAX_BYTES_RECV)
-        header_pos = []
+        header_state = []
         print(f"SAME DATA {data == self._last_message} -> {data} - {self._last_message}")
         if data.startswith(bytes(self.mac)) or data == self._last_message:
             print("Read Startswith")
@@ -51,33 +51,33 @@ class UDPConnection(socket.socket):
             return self.read(state, check_mac, mac)
         else:
             header_mac: bytes = data[:6]
-            header_pos: list[int] = [struct.unpack("<H", data[16:18])[0], struct.unpack("<H", data[18:20])[0]]
-            if header_pos == [256, 0] and state != header_pos:
+            header_state: list[int] = [struct.unpack("<H", data[16:18])[0], struct.unpack("<H", data[18:20])[0]]
+            if header_state == [256, 0] and state != header_state:
                 self._repeat += 1
                 return self.read(state, check_mac, mac)
-            print(header_pos)
-        print(f"Positions: {header_pos == state} -> {header_pos} == {state}")
-        if header_pos == state:
+            print(header_state)
+        print(f"Positions: {header_state == state} -> {header_state} == {state}")
+        if header_state == state:
             print(f"MAC: {check_mac == header_mac} -> {check_mac} == {header_mac}")
             if check_mac is not None:
                 print("CHECK_MAC")
                 if check_mac == header_mac:
                     self._repeat = 0
                     if mac is True:
-                        print(f"MAC-True: {data[6:]}, {header_pos}, {header_mac}")
-                        return data[6:], header_pos, header_mac
-                    print(f"MAC-False: {data[6:]}, {header_pos}")
-                    return data[6:], header_pos
+                        print(f"MAC-True: {data[6:]}, {header_state}, {header_mac}")
+                        return data[6:], header_state, header_mac
+                    print(f"MAC-False: {data[6:]}, {header_state}")
+                    return data[6:], header_state
                 else:
                     raise Exception("MAC Error")
             else:
                 print("CHECK_MAC NONE")
                 self._repeat = 0
                 if mac is True:
-                    print(f"MAC-True: {data[6:]}, {header_pos}, {header_mac}")
-                    return data[6:], header_pos, header_mac
-                print(f"MAC-False: {data[6:]}, {header_pos}")
-                return data[6:], header_pos
+                    print(f"MAC-True: {data[6:]}, {header_state}, {header_mac}")
+                    return data[6:], header_state, header_mac
+                print(f"MAC-False: {data[6:]}, {header_state}")
+                return data[6:], header_state
         else:
             self._repeat += 1
             self.read(state, check_mac, mac)
