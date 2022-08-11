@@ -1,12 +1,12 @@
 #!/bin/sh
 
 echo "Check if the required Services are installed"
-if systemctl status isc-dhcp-server | grep "not-found" &> /dev/null ; then
+if systemctl status isc-dhcp-server | grep "not-found\|could not be found" &> /dev/null ; then
     echo "Installing the DHCP-Server..."
     sudo apt-get -y install isc-dhcp-server
 else
     echo "DHCP-Server is already installed!"
-if lsmod | grep "" &> /dev/null ; then
+if systemctl status dnsmasq | grep "not-found\|could not be found" &> /dev/null ; then
     echo "Installing the TFTP-Server..."
     sudo apt-get -y install dnsmasq
 else
