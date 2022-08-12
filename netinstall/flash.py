@@ -1,3 +1,4 @@
+import io
 import importlib
 
 from time import sleep
@@ -154,7 +155,10 @@ class Flasher:
         """
         # Offer the flash
         print("Sent the offer to flash")
-        self.do(b"OFFR\n\n", b"YACK\n")
+        try:
+            self.do(b"OFFR\n\n", b"YACK\n")
+        except OSError:
+            self.do(b"OFFR\n\n", b"YACK\n")
         # Format the board
         print("Formatting the board")
         self.do(b"", b"STRT")
@@ -208,7 +212,7 @@ class Flasher:
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
             print(e, "-", fname, "on line", exc_tb.tb_lineno)"""
 
-    def do_file(self, file, max_pos: int) -> None:
+    def do_file(self, file: io.BufferedReader, max_pos: int) -> None:
         """
         Send one file to the Device.
         It sends multiple smaller Packets because of the `MAX_BYTES`
@@ -216,12 +220,13 @@ class Flasher:
         Arguments
         ---------
 
-        file : IO
+        file : BufferedReader
             A File object to send to the Device
         max_pos : int
             The lenght of the file to check when the whole file is sent
         """
         file_pos = 0
+        print("TYYYYYYYYYYYPPPPPPPPPPPPPEEEEEEEEEEEEE:", type(file))
         while True:
             data = file.read(self.MAX_BYTES)
             self.write(data)
