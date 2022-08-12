@@ -162,7 +162,7 @@ class Flasher:
                 self.do(b"OFFR\n\n", b"YACK\n")
                 break
             except OSError:
-                pass
+                cnt += 1
         # Format the board
         print("Formatting the board")
         self.do(b"", b"STRT")
@@ -237,7 +237,7 @@ class Flasher:
             self.write(data)
 
             file_pos += len(data)
-            self.update_file_bar(max_pos, file_pos, file_name)
+            self.update_file_bar(file_pos, max_pos, file_name)
             if file_pos >= max_pos:
                 # try:
                 resp = self.wait()
@@ -306,6 +306,7 @@ class Flasher:
         """
         self.read()
 
+    @staticmethod
     def update_file_bar(curr_pos: int, max_pos: int, name: str, leng: int = 20):
         leng = 20
         proz = round((curr_pos/max_pos) * 100)
