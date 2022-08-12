@@ -155,10 +155,13 @@ class Flasher:
         """
         # Offer the flash
         print("Sent the offer to flash")
-        try:
-            self.do(b"OFFR\n\n", b"YACK\n")
-        except OSError:
-            self.do(b"OFFR\n\n", b"YACK\n")
+        cnt = 0
+        while cnt < 5:
+            try:
+                self.do(b"OFFR\n\n", b"YACK\n")
+                break
+            except OSError:
+                pass
         # Format the board
         print("Formatting the board")
         self.do(b"", b"STRT")
@@ -226,7 +229,6 @@ class Flasher:
             The lenght of the file to check when the whole file is sent
         """
         file_pos = 0
-        print("TYYYYYYYYYYYPPPPPPPPPPPPPEEEEEEEEEEEEE:", type(file))
         while True:
             data = file.read(self.MAX_BYTES)
             self.write(data)
