@@ -7,13 +7,14 @@ class Plugin:
         self.config = config
         print(self.config)
 
-    def get_files(self, *args, **kwargs):
+    def get_files(self, *args, **kwargs) -> tuple[tuple[BufferedReader, str, int], tuple[BufferedReader, str, int]]:
         """
         Searches for the path of the .npk and .rsc files in the config
 
         Returns:
-            Tuple including the path to the .npk and the .rsc file
-            (ROUTEROS.npk, CONFIG.rsc)
+         - (BufferedReader, str, int) (BufferedReader, str, int): 
+           Tuple including the path to the .npk and the .rsc file
+           (ROUTEROS.npk, CONFIG.rsc)
         """
         firmw = self.config["pynetinstall"]["firmware"]
         conf = self.config["pynetinstall"]["config"]
