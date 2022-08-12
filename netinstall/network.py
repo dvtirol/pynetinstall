@@ -119,7 +119,7 @@ class UDPConnection(socket.socket):
             header_state: list[int] = [*struct.unpack("<HH", data[16:20])]
             print(header_state)
             print(f"Positions: {header_state == state} -> {header_state} == {state}")
-            # Header countet + 1
+            # Header counter + 1
             # or they are the same when no data was sent just the information is spammed by the Device
             if (header_state[0] - 1 == state[0] and header_state[1] == state[1]) or (header_state == state and self._last_message is None):
                 print(f"MAC: {check_mac == header_mac} -> {check_mac} == {header_mac}")
@@ -159,7 +159,7 @@ class UDPConnection(socket.socket):
         """
         # message = self.mac + self.dev_mac + int(0).to_bytes(2, "little") + len(data).to_bytes(2, "little") + state[0].to_bytes(2, "little") + state[1].to_bytes(2, "little") + data
         message = self.mac + self.dev_mac + struct.pack("<HHHH", 0, len(data), state[1], state[0]) + data
-        print(f"Write: {len(message)} bytes")
+        # print(f"Write: {len(message)} bytes")
         self.sendto(message, recv_addr)
         self._last_message = message
 
