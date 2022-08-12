@@ -110,35 +110,35 @@ class UDPConnection(socket.socket):
         if self._repeat > self.MAX_ERRORS:
             raise Exception(f"The function was called more than {self.MAX_ERRORS} times for the execution of the {state} State")
         
-        print("Started Reading...")
+        # print("Started Reading...")
         data = self.recv(self.MAX_BYTES_RECV)
         header_state = []
-        print(f"SAME DATA {data == self._last_message} -> {data} - {self._last_message}")
+        # print(f"SAME DATA {data == self._last_message} -> {data} - {self._last_message}")
         if data != self._last_message:
             header_mac: bytes = data[:6]
             header_state: list[int] = [*struct.unpack("<HH", data[16:20])]
-            print(header_state)
-            print(f"Positions: {header_state == state} -> {header_state} == {state}")
+            # print(header_state)
+            # print(f"Positions: {header_state == state} -> {header_state} == {state}")
             # Header counter + 1
             # or they are the same when no data was sent just the information is spammed by the Device
             if (header_state[0] - 1 == state[0] and header_state[1] == state[1]) or (header_state == state and self._last_message is None):
-                print(f"MAC: {check_mac == header_mac} -> {check_mac} == {header_mac}")
+                # print(f"MAC: {check_mac == header_mac} -> {check_mac} == {header_mac}")
                 if check_mac is not None:
-                    print("CHECK_MAC")
+                    # print("CHECK_MAC")
                     if check_mac == header_mac:
                         self._repeat = 0
                         if mac is True:
-                            print(f"MAC-True: {data[6:]}, {header_state}, {header_mac}")
+                            # print(f"MAC-True: {data[6:]}, {header_state}, {header_mac}")
                             return data[6:], header_state, header_mac
-                        print(f"MAC-False: {data[6:]}, {header_state}")
+                        # print(f"MAC-False: {data[6:]}, {header_state}")
                         return data[6:], header_state
                 else:
-                    print("CHECK_MAC NONE")
+                    # print("CHECK_MAC NONE")
                     self._repeat = 0
                     if mac is True:
-                        print(f"MAC-True: {data[6:]}, {header_state}, {header_mac}")
+                        # print(f"MAC-True: {data[6:]}, {header_state}, {header_mac}")
                         return data[6:], header_state, header_mac
-                    print(f"MAC-False: {data[6:]}, {header_state}")
+                    # print(f"MAC-False: {data[6:]}, {header_state}")
                     return data[6:], header_state
         self._repeat += 1
         return self.read(state, check_mac, mac)

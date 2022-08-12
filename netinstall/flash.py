@@ -1,4 +1,5 @@
 import io
+import sys
 import importlib
 
 from time import sleep
@@ -215,7 +216,7 @@ class Flasher:
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
             print(e, "-", fname, "on line", exc_tb.tb_lineno)"""
 
-    def do_file(self, file: io.BufferedReader, max_pos: int) -> None:
+    def do_file(self, file: io.BufferedReader, max_pos: int, file_name: str) -> None:
         """
         Send one file to the Device.
         It sends multiple smaller Packets because of the `MAX_BYTES`
@@ -227,13 +228,16 @@ class Flasher:
             A File object to send to the Device
         max_pos : int
             The lenght of the file to check when the whole file is sent
+        file_name : str
+            The name of the file to send
         """
         file_pos = 0
         while True:
             data = file.read(self.MAX_BYTES)
             self.write(data)
 
-            file_pos = file_pos + len(data)
+            file_pos += len(data)
+            self.update_file_bar(max_pos, file_pos, file_name)
             if file_pos >= max_pos:
                 # try:
                 resp = self.wait()
@@ -276,9 +280,10 @@ class Flasher:
             else:
                 name = npk[1]"""
         self.do(bytes(f"FILE\n{npk[1]}\n{str(npk[2])}\n", "utf-8"), b"RETR")
-        self.do_file(npk[0], npk[2])
+        self.do_file(npk[0], npk[2], npk[1])
 
         self.do(b"", b"RETR")
+        print("Done with File 1")
 
         # Send the .rsc file
         """name = rsc[1].split("\\")
@@ -291,7 +296,7 @@ class Flasher:
             else:
                 name = rsc[1]"""
         self.do(bytes(f"FILE\n{rsc[1]}\n{str(rsc[2])}\n", "utf-8"), b"RETR")
-        self.do_file(rsc[0], rsc[2])
+        self.do_file(rsc[0], rsc[2], npk[1])
 
         self.do(b"", b"RETR")
 
@@ -300,4 +305,12 @@ class Flasher:
         Read some data from the connection to let some time pass
         """
         self.read()
+
+    def update_file_bar(curr_pos: int, max_pos: int, name: str, leng: int = 20):
+        leng = 20
+        proz = round((curr_pos/max_pos) * 100)
+        done = round((leng/100) * proz)
+        inner = "".join([">" for i in range(done)] + [" " for i in range(leng-done)])
+        sys.stdout.write(f"\rSending {name} - [{inner}] {proz}%")
+
 
