@@ -29,7 +29,7 @@ class Plugin:
                 raise FileExistsError(f"File '{conf}' doesn't exist")
         else:
             raise MissingArgument("Configuration not defined")
-        return (open(firmw, "rb"), os.path.basename(firmw), os.stat(firmw).st_size), (open(conf, "rb"), os.path.basename(conf), os.stat(conf).st_size)
+        return open(firmw, "rb"), open(conf, "rb")
 
 
 class MissingArgument(Exception):
