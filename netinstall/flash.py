@@ -271,7 +271,7 @@ class Flasher:
         # Send the .npk file
         npk_file, npk_file_name, npk_file_size = self.resolve_file_data(npk)
         self.do(bytes(f"FILE\n{npk_file_name}\n{str(npk_file_size)}\n", "utf-8"), b"RETR")
-        self.do_file(npk_file, npk_file_name, npk_file_size)
+        self.do_file(npk_file, npk_file_size, npk_file_name)
 
         self.do(b"", b"RETR")
         print("Done with File 1")
@@ -279,7 +279,7 @@ class Flasher:
         # Send the .rsc file
         rsc_file, rsc_file_name, rsc_file_size = self.resolve_file_data(rsc)
         self.do(bytes(f"FILE\n{rsc_file_name}\n{str(rsc_file_size)}\n", "utf-8"), b"RETR")
-        self.do_file(rsc_file, rsc_file_name, rsc_file_size)
+        self.do_file(rsc_file, rsc_file_size, rsc_file_name)
 
         self.do(b"", b"RETR")
 
