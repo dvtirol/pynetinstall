@@ -1,8 +1,8 @@
 import io
 import sys
+import time
 import importlib
 
-from time import sleep
 from configparser import ConfigParser
 
 from netinstall.network import UDPConnection
@@ -261,7 +261,7 @@ class Flasher:
                 # dieses sleep ist der hauptgrund wieso das file so lange zum
                 # flashen braucht. je niedrieger desto schneller
                 # kann zu position errors durch timing issues fuehren
-                sleep(35 / 10000)
+                time.sleep(35 / 10000)
         
     def do_files(self) -> None:
         """
