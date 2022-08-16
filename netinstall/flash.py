@@ -3,6 +3,9 @@ import sys
 import time
 import importlib
 
+from io import BufferedReader
+from urllib import request, parse
+from os.path import getsize, basename
 from configparser import ConfigParser
 
 from netinstall.network import UDPConnection
@@ -26,7 +29,7 @@ class Flasher:
     dev_mac : bytes
         The MAC-Address of the Device that will be flashed
     pos : list
-        The current state of the flash (default: [1, 0])
+        The current state of the flash (default: [0, 0])
     plugin : Plugin
         A Plugin to get the firmware and the configuration file 
         (Must include a .get_files(), has the Configuration as an attribute)
@@ -67,11 +70,6 @@ class Flasher:
     MAX_BYTES: int = 1024
 
     def __init__(self) -> None:
-        """
-        Initialize a new Flasher object
-
-        Create a UDPConnection and load the plugin
-        """
         self.conn = UDPConnection()
         self.plugin = self.load_config()
 
@@ -271,35 +269,50 @@ class Flasher:
         npk, rsc = self.plugin.get_files()
 
         # Send the .npk file
-        """name = npk[1].split("\")
-        if isinstance(name, list):
-            name = name[-1]
-        else:
-            name = npk[1].split("/")
-            if isinstance(name, list):
-                name = name[-1]
-            else:
-                name = npk[1]"""
-        self.do(bytes(f"FILE\n{npk[1]}\n{str(npk[2])}\n", "utf-8"), b"RETR")
-        self.do_file(npk[0], npk[2], npk[1])
+        npk_file, npk_file_name, npk_file_size = self.resolve_file_data(npk)
+        self.do(bytes(f"FILE\n{npk_file_name}\n{str(npk_file_size)}\n", "utf-8"), b"RETR")
+        self.do_file(npk_file, npk_file_name, npk_file_size)
 
         self.do(b"", b"RETR")
         print("Done with File 1")
 
         # Send the .rsc file
-        """name = rsc[1].split("\\")
-        if isinstance(name, list):
-            name = name[-1]
-        else:
-            name = rsc[1].split("/")
-            if isinstance(name, list):
-                name = name[-1]
-            else:
-                name = rsc[1]"""
-        self.do(bytes(f"FILE\n{rsc[1]}\n{str(rsc[2])}\n", "utf-8"), b"RETR")
-        self.do_file(rsc[0], rsc[2], npk[1])
+        rsc_file, rsc_file_name, rsc_file_size = self.resolve_file_data(rsc)
+        self.do(bytes(f"FILE\n{rsc_file_name}\n{str(rsc_file_size)}\n", "utf-8"), b"RETR")
+        self.do_file(rsc_file, rsc_file_name, rsc_file_size)
 
         self.do(b"", b"RETR")
+
+    @staticmethod
+    def resolve_file_data(data) -> tuple:
+        """
+        This function resolves some data from a file
+
+        Arguments
+        ---------
+        data : str, BufferedReader
+            The information that is available for the file
+            (url, filename, BufferedReader)
+        """
+        if isinstance(data, BufferedReader):
+            size = getsize(data.name)
+            name = basename(data.name)
+            file = data
+        else:
+            try:
+                par = parse.urlparse(data)
+                size = getsize(par)
+                name = basename(par)
+                file = request.urlopen(data)
+            except:
+                try:
+                    size = getsize(data)
+                    name = basename(data)
+                    file = open(data, "rb")
+                    
+                except:
+                    raise Exception("Unable to get the file")
+
 
     def wait(self) -> None:
         """
@@ -313,5 +326,3 @@ class Flasher:
         done = round((leng/100) * proz)
         inner = "".join([">" for i in range(done)] + [" " for i in range(leng-done)])
         sys.stdout.write(f"\Flashing {name} - [{inner}] {proz}%")
-
-
