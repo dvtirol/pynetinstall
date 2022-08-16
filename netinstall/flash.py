@@ -61,6 +61,15 @@ class Flasher:
     
     wait() -> None
         Wait for something
+
+    Static Methods
+    --------------
+
+    update_file_bar(curr_pos, max_pos, name, leng=50) -> None
+        Updated a Loading bar to display the progress when flashig a file
+
+    resolve_file_data(data) -> tuple
+        Gets information about a file
     """
 
     conn: UDPConnection
@@ -323,6 +332,23 @@ class Flasher:
 
     @staticmethod
     def update_file_bar(curr_pos: int, max_pos: int, name: str, leng: int = 50):
+        """
+        Updates a Loading Bar when no print statements get executed duning updating
+
+        Calculates how many percent are already processed and displays that.
+
+        Arguments
+        ---------
+
+        curr_pos : int
+            The current pos what is already processed
+        max_pos : int
+            The highest pos what should be processed
+        name : str
+            A Text to display in front of the progress bar
+        leng : int
+            The length of the progress bar (default: 50)
+        """
         proz = round((curr_pos/max_pos) * 100)
         done = round((leng/100) * proz)
         inner = "".join([">" for i in range(done)] + [" " for i in range(leng-done)])
