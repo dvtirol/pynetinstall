@@ -247,6 +247,7 @@ class Flasher:
                 print(res)
                 if b"RETR" == res[14:]:
                     file.close()
+                    print()
                     self.state[1] += 1
                     return True
                 else:
@@ -307,11 +308,10 @@ class Flasher:
         self.read()
 
     @staticmethod
-    def update_file_bar(curr_pos: int, max_pos: int, name: str, leng: int = 20):
-        leng = 20
+    def update_file_bar(curr_pos: int, max_pos: int, name: str, leng: int = 50):
         proz = round((curr_pos/max_pos) * 100)
         done = round((leng/100) * proz)
         inner = "".join([">" for i in range(done)] + [" " for i in range(leng-done)])
-        sys.stdout.write(f"\rSending {name} - [{inner}] {proz}%")
+        sys.stdout.write(f"\Flashing {name} - [{inner}] {proz}%")
 
 
