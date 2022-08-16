@@ -312,6 +312,7 @@ class Flasher:
                     
                 except:
                     raise Exception("Unable to get the file")
+        return file, name, size
 
 
     def wait(self) -> None:
