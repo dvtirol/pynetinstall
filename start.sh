@@ -1,12 +1,6 @@
 #!/bin/sh
 
-if systemctl status isc-dhcp-server | grep "failed\|inactive" &> /dev/null ; then
-    sudo systemctl restart isc-dhcp-server &> /dev/null
-    echo "Started isc-dhcp-server!"
-fi
-if systemctl status dnsmasq | grep "failed\|inactive" &> /dev/null ; then
-    sudo systemctl restart dnsmasq &> /dev/null
-    echo "Started dnsmasq!"
-fi
+sudo service isc-dhcp-server restart
+sudo service dnsmasq restart
 
 python /home/pi/pyNetinstall/main.py
