@@ -4,16 +4,24 @@ from configparser import ConfigParser
 
 
 class Plugin:
+    """
+    This is the setup of the Default Plugin
+
+    The Plugin takes at least one argument to save the config to (`config`)
+    It includes the Configuration of the programm loaded from the file (config.ini)
+    When running the programm and the server is connected to the device, 
+    there will be a new section called `device` where information is saved.
+    (MAC Address, model, architecture, min OS)
+    """
     def __init__(self, config: ConfigParser):
         self.config = config
-        print(self.config)
 
     def get_files(self, *args, **kwargs) -> tuple[tuple[BufferedReader, str, int], tuple[BufferedReader, str, int]]:
         """
         Searches for the path of the .npk and .rsc files in the config
 
         Returns:
-         - (BufferedReader, str, int) (BufferedReader, str, int): 
+         - BufferedReader or str, BufferedReader or str: 
            Tuple including the path to the .npk and the .rsc file
            (ROUTEROS.npk, CONFIG.rsc)
         """
