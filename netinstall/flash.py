@@ -131,7 +131,7 @@ class Flasher:
         """
         self.conn.write(data, self.state)
 
-    def read(self, mac: bool = False) -> tuple:
+    def read(self, mac: bool = False, get_state: bool = False) -> tuple:
         """
         Read the `data` from the UDPConnection
         
@@ -143,6 +143,8 @@ class Flasher:
         
         mac : bool
             If you want to reveive the MAC Address of the device who sent what u read
+        get_state : bool
+            If you want to check if the states are matching or not
 
         Returns
         -------
@@ -153,7 +155,7 @@ class Flasher:
         Optional (when mac is True)
          - bytes: The Mac address of the Device
         """
-        return self.conn.read(self.state, self.dev_mac, mac)
+        return self.conn.read(self.state, self.dev_mac, mac, get_state)
 
     def run(self) -> None:
         """
@@ -254,16 +256,12 @@ class Flasher:
             file_pos += len(data)
             self.update_file_bar(file_pos, max_pos, file_name)
             if file_pos >= max_pos:
-                # try:
-                self.wait()
-                print()
+                self.state = self.wait(True)
 
-                # check
                 res, self.state = self.read()
                 print(res)
                 if b"RETR" == res[14:]:
                     file.close()
-                    self.state[1] += 1
                     return True
                 else:
                     return False
@@ -331,11 +329,13 @@ class Flasher:
         return file, name, size
 
 
-    def wait(self) -> None:
+    def wait(self, get_state: bool = False) -> None:
         """
         Read some data from the connection to let some time pass
         """
-        self.read()
+        _, st = self.read(get_state=get_state)
+        return st
+
 
     @staticmethod
     def update_file_bar(curr_pos: int, max_pos: int, name: str, leng: int = 50):

@@ -81,7 +81,7 @@ class UDPConnection(socket.socket):
         arg = struct.pack('256s', bytes(self._interface_name, 'utf-8')[:15])
         self.mac = fcntl.ioctl(self.fileno(), 0x8927, arg)[18:24]
 
-    def read(self, state: tuple, check_mac: bytes = None, mac: bool = False) -> tuple:
+    def read(self, state: tuple, check_mac: bytes = None, mac: bool = False, get_state: bool = False) -> tuple:
         """
         Reads `MAX_BYTES_RECV` (int) from the socket and returns the bytes.
 
@@ -121,7 +121,7 @@ class UDPConnection(socket.socket):
             # print(f"Positions: {header_state == state} -> {header_state} == {state}")
             # Header counter + 1
             # or they are the same when no data was sent just the information is spammed by the Device
-            if (header_state[0] - 1 == state[0] and header_state[1] == state[1]) or (header_state == state and self._last_message is None):
+            if (header_state[0] - 1 == state[0] and header_state[1] == state[1]) or (header_state == state and self._last_message is None) or get_state is True:
                 # print(f"MAC: {check_mac == header_mac} -> {check_mac} == {header_mac}")
                 if check_mac is not None:
                     # print("CHECK_MAC")
