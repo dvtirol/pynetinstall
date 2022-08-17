@@ -2,6 +2,8 @@ import socket
 import struct
 import fcntl
 
+from netinstall.device import DeviceInfo
+
 
 class UDPConnection(socket.socket):
     """
@@ -121,13 +123,13 @@ class UDPConnection(socket.socket):
                     if header_state == state:
                         self._repeat = 0
                         if mac is True:
-                            return data[6:], header_state, header_mac
+                            return data, header_state, header_mac
                         return data[6:], header_state
             else:
                 if header_state == state:
                     self._repeat = 0
                     if mac is True:
-                        return data[6:], header_state, header_mac
+                        return data, header_state, header_mac
                     return data[6:], header_state
         self._repeat += 1
         return self.read(state, check_mac, mac)
@@ -152,7 +154,7 @@ class UDPConnection(socket.socket):
         self.sendto(message, recv_addr)
         self._last_message = message
 
-    def get_device_info(self) -> tuple:
+    def get_device_info(self) -> DeviceInfo:
         r"""
         This function collects some information about the routerboard
 
@@ -178,25 +180,4 @@ class UDPConnection(socket.socket):
         data, _, self.dev_mac = self.read([1, 0], mac=True)
         print(f"MAC Address: \n - Raspberry: {self.mac}\n - Board: {self.dev_mac}")
         print("Device Found")
-        infoData = data[20:]
-        rows = infoData.split(b"\n")
-        if len(rows) == 6:
-            if rows[1] != b"":
-                lic_id = rows[1]
-            if rows[2] != b"":
-                lic_key = rows[2]
-            rb_model = rows[3]
-            rb_arch = rows[4]
-            rb_minOS = rows[5]
-
-            """print("model:", rb_model)
-            print("arch:", rb_arch)
-            print("min os:", rb_minOS)
-            print("device mac:", mac)
-            print("lic key:", lic_key)
-            print("lic id:", lic_id)"""
-            print(f"Device Search: {self.dev_mac}, {rows[3].decode()}, {rows[4].decode()}, {rows[5].decode()}")
-            self.dev_mac = self.dev_mac
-            return self.dev_mac, rows[3].decode(), rows[4].decode(), rows[5].decode()
-        else:
-            raise Exception("Discovery Error: No data found")
+        return DeviceInfo.from_data(data)

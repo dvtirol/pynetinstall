@@ -2,6 +2,8 @@ import os
 from io import BufferedReader
 from configparser import ConfigParser
 
+from netinstall.device import DeviceInfo
+
 
 class Plugin:
     """
@@ -16,7 +18,7 @@ class Plugin:
     def __init__(self, config: ConfigParser):
         self.config = config
 
-    def get_files(self, *args, **kwargs) -> tuple[tuple[BufferedReader, str, int], tuple[BufferedReader, str, int]]:
+    def get_files(self, info: DeviceInfo) -> tuple[BufferedReader or str, BufferedReader or str]:
         """
         Searches for the path of the .npk and .rsc files in the config
 

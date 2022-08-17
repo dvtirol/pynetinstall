@@ -8,9 +8,14 @@ from urllib import request, parse
 from os.path import getsize, basename
 from configparser import ConfigParser
 
+from netinstall.device import DeviceInfo
 from netinstall.network import UDPConnection
 from netinstall.plugins.simple import Plugin
 
+"""
+Plugin Laden bei init
+Daten erst bei run
+"""
 
 class Flasher:
     """
@@ -73,7 +78,7 @@ class Flasher:
     """
 
     conn: UDPConnection
-    dev_mac: bytes
+    info: DeviceInfo
     state: list = [0, 0]
     plugin: Plugin
     MAX_BYTES: int = 1024
@@ -103,17 +108,11 @@ class Flasher:
         FileNotFoundError
             If the `config_file` does not exist or is not found
         """
-        self.dev_mac, model, arch, min_os = self.conn.get_device_info()
+        
         cparser = ConfigParser()
         if not cparser.read(config_file):
             raise FileNotFoundError("Configuration not found")
         mod, _, cls = cparser["pynetinstall"]["plugin"].partition(":")
-        cparser["device"] = {
-            "MAC": self.dev_mac,
-            "model": model,
-            "arch": arch,
-            "min_os": min_os
-        }
         plug = getattr(importlib.import_module(mod, __name__), cls)
         return plug(config=cparser)
 
@@ -155,7 +154,7 @@ class Flasher:
         Optional (when mac is True)
          - bytes: The Mac address of the Device
         """
-        return self.conn.read(self.state, self.dev_mac, mac)
+        return self.conn.read(self.state, self.info.mac, mac)
 
     def run(self) -> None:
         """
@@ -169,15 +168,17 @@ class Flasher:
          5. Tells the board that the files can now be installed
          6. Restarts the board
         """
+
+        self.info = self.conn.get_device_info()
         # Offer the flash
         print("Sent the offer to flash")
-        cnt = 0
-        while cnt < 5:
+        while True:
             try:
                 self.do(b"OFFR\n\n", b"YACK\n")
                 break
+            # Errno 101 Network is unreachable
             except OSError:
-                cnt += 1
+                pass
         # Format the board
         print("Formatting the board")
         self.do(b"", b"STRT")
@@ -221,10 +222,6 @@ class Flasher:
                 return True
             else:
                 return False
-        """except Exception as e:
-            exc_type, exc_object, exc_tb = sys.exc_info()
-            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-            print(e, "-", fname, "on line", exc_tb.tb_lineno)"""
 
     def do_file(self, file: io.BufferedReader, max_pos: int, file_name: str) -> None:
         """
@@ -253,16 +250,11 @@ class Flasher:
             self.update_file_bar(file_pos, max_pos, file_name)
             if file_pos >= max_pos:
                 res, self.state = self.read()
-                if b"RETR" == res[14:]:
+                if b"RETR" == res[14:]: # describe packet
                     file.close()
                     return True
                 else:
                     return False
-                """except Exception as e:
-                    exc_type, exc_object, exc_tb = sys.exc_info()
-                    fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                    print(e, "-", fname, "on line", exc_tb.tb_lineno)
-                    break"""
             else:
                 # dieses sleep ist der hauptgrund wieso das file so lange zum
                 # flashen braucht. je niedrieger desto schneller
@@ -274,7 +266,7 @@ class Flasher:
         Sends the npk and the rsc file to the Connection using the do_files() Function
         It requests both files from the get_files() Function of the Plugin
         """
-        npk, rsc = self.plugin.get_files()
+        npk, rsc = self.plugin.get_files(self.info)
 
         # Send the .npk file
         npk_file, npk_file_name, npk_file_size = self.resolve_file_data(npk)
