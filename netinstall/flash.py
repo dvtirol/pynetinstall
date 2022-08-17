@@ -206,11 +206,9 @@ class Flasher:
         response : bytes
             What to expect as a Response from the Device (default: None)
         """
-        # try:
         self.state[1] += 1
         print(f"1_ Do: {data}")
         self.write(data)
-        # self.state[1] = self.state[0]
         print("2_ Waiting")
         self.wait()
 
@@ -256,12 +254,16 @@ class Flasher:
             file_pos += len(data)
             self.update_file_bar(file_pos, max_pos, file_name)
             if file_pos >= max_pos:
+                print("1_WAIT")
                 self.wait()
-
+                print("2_DONE WAITING")
+                print("3_Response")
                 res, self.state = self.read()
                 print(res)
                 if b"RETR" == res[14:]:
+                    print("4_Response is right")
                     file.close()
+                    print("5_File closed")
                     return True
                 else:
                     return False
