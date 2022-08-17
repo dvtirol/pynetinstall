@@ -318,9 +318,8 @@ class Flasher:
                     size = getsize(data)
                     name = basename(data)
                     file = open(data, "rb")
-                    
                 except:
-                    raise Exception("Unable to get the file")
+                    raise Exception("Unable to get file file information")
         return file, name, size
 
 
