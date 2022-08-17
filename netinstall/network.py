@@ -109,27 +109,22 @@ class UDPConnection(socket.socket):
         """
         if self._repeat > self.MAX_ERRORS:
             raise Exception(f"The function was called more than {self.MAX_ERRORS} times for the execution of the {state} State")
-        print("1_1_Received")
-        data = self.recv(self.MAX_BYTES_RECV)
+        data, addr = self.recvfrom(self.MAX_BYTES_RECV)
         header_state = []
-        if data != self._last_message and data[:6] != check_mac:
-            
-            print("1_2_Different Msg")
+        if addr[0] == "0.0.0.0":
             header_mac: bytes = data[:6]
             header_state: list[int] = [*struct.unpack("<HH", data[16:20])]
             # Header counter + 1
             # or they are the same when no data was sent just the information is spammed by the Device
             if check_mac:
                 if check_mac == header_mac:
-                    if header_state == state and self._last_message is None:
-                        print("1_3_State done")
+                    if header_state == state:
                         self._repeat = 0
                         if mac is True:
                             return data[6:], header_state, header_mac
                         return data[6:], header_state
             else:
-                if header_state[0] -1 == state[0] and header_state[1] == state[1]:
-                    print("1_3_Statee doneEEEEEEEEEEEEEEE")
+                if header_state == state:
                     self._repeat = 0
                     if mac is True:
                         return data[6:], header_state, header_mac

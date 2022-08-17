@@ -193,6 +193,7 @@ class Flasher:
         # Tell the board that it can now reboot and load the files
         print("Reboot")
         self.do(b"TERM\nInstallation successful\n")
+        return
 
     def do(self, data: bytes, response: bytes = None) -> None:
         """
@@ -207,18 +208,14 @@ class Flasher:
             What to expect as a Response from the Device (default: None)
         """
         self.state[1] += 1
-        print(f"1_ Do: {data}")
         self.write(data)
-        print("2_ Waiting")
-        self.wait()
+        self.state[0] += 1
 
         if response is None:
-            print("3_ Response None")
             return True
         else:
-            print("3_ Get Response")
+            self.wait()
             res, self.state = self.read()
-            print(f"4_ Response {res[14:]}\n{response}")
             if response == res[14:]:
                 
                 return True
@@ -250,20 +247,14 @@ class Flasher:
             data = file.read(self.MAX_BYTES)
             self.write(data)
             self.state[0] += 1
+            self.wait()
 
             file_pos += len(data)
             self.update_file_bar(file_pos, max_pos, file_name)
             if file_pos >= max_pos:
-                print("1_WAIT")
-                self.wait()
-                print("2_DONE WAITING")
-                print("3_Response")
                 res, self.state = self.read()
-                print(res)
                 if b"RETR" == res[14:]:
-                    print("4_Response is right")
                     file.close()
-                    print("5_File closed")
                     return True
                 else:
                     return False
@@ -300,6 +291,7 @@ class Flasher:
         self.do_file(rsc_file, rsc_file_size, rsc_file_name)
 
         self.do(b"", b"RETR")
+        print("Done with file 2")
 
     @staticmethod
     def resolve_file_data(data) -> tuple:
