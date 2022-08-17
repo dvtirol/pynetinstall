@@ -108,6 +108,12 @@ class Flasher:
         if not cparser.read(config_file):
             raise FileNotFoundError("Configuration not found")
         mod, _, cls = cparser["pynetinstall"]["plugin"].partition(":")
+        cparser["device"] = {
+            "MAC": self.dev_mac,
+            "model": model,
+            "arch": arch,
+            "min_os": min_os
+        }
         plug = getattr(importlib.import_module(mod, __name__), cls)
         return plug(config=cparser)
 
