@@ -249,7 +249,7 @@ class Flasher:
             self.update_file_bar(file_pos, max_pos, file_name)
             if file_pos >= max_pos:
                 # try:
-                resp = self.wait()
+                self.wait()
                 print()
 
                 # check
