@@ -256,9 +256,9 @@ class Flasher:
             file_pos += len(data)
             self.update_file_bar(file_pos, max_pos, file_name)
             if file_pos >= max_pos:
-                self.state = self.wait(True)
+                # self.state = self.wait(True)
 
-                res, self.state = self.read()
+                res, self.state = self.read(get_state=True)
                 print(res)
                 if b"RETR" == res[14:]:
                     file.close()
@@ -287,6 +287,7 @@ class Flasher:
         npk_file, npk_file_name, npk_file_size = self.resolve_file_data(npk)
         self.do(bytes(f"FILE\n{npk_file_name}\n{str(npk_file_size)}\n", "utf-8"), b"RETR")
         self.do_file(npk_file, npk_file_size, npk_file_name)
+        print(self.state)
 
         self.do(b"", b"RETR")
         print("Done with File 1")

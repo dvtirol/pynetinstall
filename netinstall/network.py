@@ -124,14 +124,12 @@ class UDPConnection(socket.socket):
             if (header_state[0] - 1 == state[0] and header_state[1] == state[1]) or (header_state == state and self._last_message is None) or get_state is True:
                 # print(f"MAC: {check_mac == header_mac} -> {check_mac} == {header_mac}")
                 if check_mac is not None:
-                    # print("CHECK_MAC")
-                    if check_mac == header_mac:
-                        self._repeat = 0
-                        if mac is True:
-                            # print(f"MAC-True: {data[6:]}, {header_state}, {header_mac}")
-                            return data[6:], header_state, header_mac
-                        # print(f"MAC-False: {data[6:]}, {header_state}")
-                        return data[6:], header_state
+                    self._repeat = 0
+                    if mac is True:
+                        # print(f"MAC-True: {data[6:]}, {header_state}, {header_mac}")
+                        return data[6:], header_state, header_mac
+                    # print(f"MAC-False: {data[6:]}, {header_state}")
+                    return data[6:], header_state
                 else:
                     # print("CHECK_MAC NONE")
                     self._repeat = 0
