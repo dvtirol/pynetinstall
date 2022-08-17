@@ -7,6 +7,3 @@ while True:
     except KeyboardInterrupt:
         print("Stopping the Flasher")
         break
-    except:
-        pass
-    

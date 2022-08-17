@@ -87,6 +87,7 @@ class Flasher:
         self.conn = UDPConnection()
         self.plugin = self.load_config()
 
+
     def load_config(self, config_file: str = "config.ini") -> Plugin:
         """
         Load the Plugin as configured in the `config_file`
@@ -174,6 +175,7 @@ class Flasher:
         print("Sent the offer to flash")
         while True:
             try:
+                self.state = [0, 0]
                 self.do(b"OFFR\n\n", b"YACK\n")
                 break
             # Errno 101 Network is unreachable

@@ -16,7 +16,6 @@ class DeviceInfo:
         rows = data[20:].split(b"\n")
         rows.remove(rows[0])
         rows = list(map(lambda x: x.decode(), rows))
-        print(rows)
         return cls(
             mac,
             *rows[2:5],
