@@ -272,10 +272,9 @@ class Flasher:
         npk_file, npk_file_name, npk_file_size = self.resolve_file_data(npk)
         self.do(bytes(f"FILE\n{npk_file_name}\n{str(npk_file_size)}\n", "utf-8"), b"RETR")
         self.do_file(npk_file, npk_file_size, npk_file_name)
-        print(self.state)
 
         self.do(b"", b"RETR")
-        print("Done with File 1")
+        print("\nDone with File 1")
 
         # Send the .rsc file
         rsc_file, rsc_file_name, rsc_file_size = self.resolve_file_data(rsc)
@@ -283,7 +282,7 @@ class Flasher:
         self.do_file(rsc_file, rsc_file_size, rsc_file_name)
 
         self.do(b"", b"RETR")
-        print("Done with file 2")
+        print("\nDone with file 2")
 
     @staticmethod
     def resolve_file_data(data) -> tuple:
