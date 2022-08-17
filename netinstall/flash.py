@@ -240,21 +240,23 @@ class Flasher:
         """
         file_pos = 0
         while True:
+            self.state[1] += 1
             data = file.read(self.MAX_BYTES)
             self.write(data)
+            self.state[0] += 1
 
             file_pos += len(data)
             self.update_file_bar(file_pos, max_pos, file_name)
             if file_pos >= max_pos:
                 # try:
                 resp = self.wait()
+                print()
 
                 # check
-                res = self.read()
+                res, self.state = self.read()
                 print(res)
                 if b"RETR" == res[14:]:
                     file.close()
-                    print()
                     self.state[1] += 1
                     return True
                 else:
