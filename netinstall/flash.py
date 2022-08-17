@@ -353,4 +353,4 @@ class Flasher:
         proz = round((curr_pos/max_pos) * 100)
         done = round((leng/100) * proz)
         inner = "".join([">" for i in range(done)] + [" " for i in range(leng-done)])
-        sys.stdout.write(f"\Flashing {name} - [{inner}] {proz}%")
+        sys.stdout.write(f"\rFlashing {name} - [{inner}] {proz}%")
