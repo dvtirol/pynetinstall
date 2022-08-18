@@ -30,10 +30,8 @@ class DeviceInfo:
         self.model = model
         self.arch = arch
         self.min_os = min_os
-        if lic_id is not None:
-            self.lic_id = lic_id
-        if lic_key is not None:
-            self.lic_key = lic_key
+        self.lic_id = lic_id
+        self.lic_key = lic_key
 
     @classmethod
     def from_data(cls, data: bytes) -> object:
@@ -52,11 +50,11 @@ class DeviceInfo:
          - DeviceInfo: The converted object
         """
         mac = data[:6]
-        rows = data[20:].split(b"\n")
-        rows.remove(rows[0])
+        rows = data[20:].split(b"\n") # Device sends 6 bytes of the MAC Address and 14 more unused bytes
+        rows.remove(rows[0]) # Remove the first unused information
         rows = list(map(lambda x: x.decode(), rows))
         return cls(
             mac,
-            *rows[2:5],
-            *rows[0:2]
+            *rows[2:5], # Model, Architecture, minOS
+            *rows[0:2]  # Licence ID, Licence Key
             )
