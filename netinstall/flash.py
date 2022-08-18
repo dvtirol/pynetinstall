@@ -110,10 +110,13 @@ class Flasher:
         cparser = ConfigParser()
         if not cparser.read(config_file):
             raise FileNotFoundError("Configuration not found")
-        mod, _, cls = cparser["pynetinstall"]["plugin"].partition(":")
-        # Import the Plugin using the importlib library
-        plug = getattr(importlib.import_module(mod, __name__), cls)
-        return plug(config=cparser)
+        try:
+            mod, _, cls = cparser["pynetinstall"]["plugin"].partition(":")
+            # Import the Plugin using the importlib library
+            plug = getattr(importlib.import_module(mod, __name__), cls)
+            return plug(config=cparser)
+        except:
+            return Plugin(config=cparser)
 
     def write(self, data: bytes) -> None:
         """
