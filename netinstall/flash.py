@@ -171,6 +171,8 @@ class Flasher:
         self.info = self.conn.get_device_info()
         # Offer the flash
         print("Sent the offer to flash")
+        # Counter to count when you are not able to connect to the Network
+        cnt = 0
         while True:
             try:
                 self.state = [0, 0]
@@ -178,6 +180,9 @@ class Flasher:
                 break
             # Errno 101 Network is unreachable
             except OSError:
+                if cnt > 5:
+                    raise Exception("Network is unreachable (Run the start.sh file again)")
+                cnt += 1
                 pass
         # Format the board
         print("Formatting the board")
