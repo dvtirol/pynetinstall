@@ -23,13 +23,24 @@ pi@raspberrypi:~$ ./setup.sh
 ## Step by Step
 
 1. **Set up the Interface**
-   * Check your IP-Address with the following command\
-   `ip address`
+   * Update the interfaces File -> `sudo nano /etc/network.interfaces`
+```
+auto eth0
+allow-hotplug eth0
+iface eht0 inet static
+address 10.192.3.1
+netmask 255.255.255.0
+gateway 10.192.3.1
+dns-nameservers 10.192.3.2
+```
+   * Check if the IP Address is configured using this command
+   `ip addr`
+   	If the Address `10.192.3.1` is displayed in the eth0 section you are ready to go
 ------------
 2. **Set up the TFTP-Server**
    * Install [dnsmasq](https://wiki.archlinux.org/title/dnsmasq)\
    `sudo apt install dnsmasq`
-   * Update the Configuration File -> `/etc/dnsmasq.conf`
+   * Update the Configuration File -> `sudo nano /etc/dnsmasq.conf`
 ```
 ##/etc/dnsmasq.conf
 enable-tftp
@@ -47,8 +58,9 @@ log-facility=/var/log/dnsmasq.log
    If you can see a **RUNNING** the service successfully started
 ------------
 3. **Set up the DHCP-Server**
-   * Install [isc-dhcp-server](https://www.isc.org/dhcp/)
-   * Update the Configuration File -> `/etc/dhcp/dhcpd.conf`
+   * Install [isc-dhcp-server](https://www.isc.org/dhcp/)\
+   `sudo apt install isc-dhcp-server`
+   * Update the Configuration File -> `sudo nano /etc/dhcp/dhcpd.conf`
     **Make sure that you replace the <> with your Configuration**
 ```
 ##/etc/dhcp/dhcpd.conf
