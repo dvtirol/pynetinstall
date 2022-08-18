@@ -9,13 +9,14 @@ Running a netinstall on a Mikrotik Router Board using a Raspberry Pi and Python
 * [Raspberry Pi 3](https://www.raspberrypi.com/products/) or newer
 * [Mikrotik Router Board](https://www.mikrotik-store.eu/en/MikroTik-CA150) or similar
 
+<!--
 ## Quick start
 ```shell
 pi@raspberrypi:~$ git clone https://github.com/dvtirol/pynetinstall
-pi@raspberrypi:~$ cd pyNetinstall
-pi@raspberrypi:~$ chmod a+rx shell/setup.sh
-pi@raspberrypi:~$ ./shell/setup.sh
-```
+pi@raspberrypi:~$ chmod a+rx setup.sh
+pi@raspberrypi:~$ ./setup.sh
+
+```-->
 
 ------------
 
@@ -124,7 +125,8 @@ When you see the line (in the CLI of the Routerboard):
 	You can start the main.py
 `python main.py`
 
-**-----------------------------------------------------------------------------------------------------------------------------------------------------------**
+------------
+
 
 ###### Error that still exist and is not able to be fixed
 	OSError [Errno 101] Network is unreachable
