@@ -1,4 +1,4 @@
-from netinstall import Flasher
+from pynetinstall import Flasher
 
 flash = Flasher()
 while True:
