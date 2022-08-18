@@ -1,4 +1,5 @@
 import os
+
 from io import BufferedReader
 from configparser import ConfigParser
 
@@ -11,21 +12,46 @@ class Plugin:
 
     The Plugin takes at least one argument to save the config to (`config`)
     It includes the Configuration of the programm loaded from the file (config.ini)
-    When running the programm and the server is connected to the device, 
-    there will be a new section called `device` where information is saved.
-    (MAC Address, model, architecture, min OS)
+
+    Attributes
+    ----------
+
+    config : ConfigParser
+        The Configuration loaded from `config.ini`
+    
+    Methods
+    -------
+
+    get_files(info) -> tuple[BufferedReader, BufferedReader]
+        Get a Reader object of the npk and the rsc file
     """
     def __init__(self, config: ConfigParser):
         self.config = config
 
-    def get_files(self, info: DeviceInfo) -> tuple[BufferedReader or str, BufferedReader or str]:
+    def get_files(self, info: DeviceInfo) -> tuple[BufferedReader, BufferedReader]:
         """
         Searches for the path of the .npk and .rsc files in the config
 
-        Returns:
-         - BufferedReader or str, BufferedReader or str: 
+        Arguments
+        ---------
+
+        info : DeviceInfo
+            Information about the Device (MAC Address, Model, Architecture, min OS, Licence)
+
+        Returns
+        -------
+
+         - (BufferedReader or str, BufferedReader or str): 
            Tuple including the path to the .npk and the .rsc file
            (ROUTEROS.npk, CONFIG.rsc)
+
+        Raises
+        ------
+
+        FileExistsError
+            A File does not exist
+        MissingArgument
+            A File is not defined in the configuration
         """
         firmw = self.config["pynetinstall"]["firmware"]
         conf = self.config["pynetinstall"]["config"]
