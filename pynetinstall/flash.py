@@ -8,9 +8,9 @@ from urllib import request, parse
 from os.path import getsize, basename
 from configparser import ConfigParser
 
-from netinstall.device import DeviceInfo
-from netinstall.network import UDPConnection
-from netinstall.plugins.simple import Plugin
+from pynetinstall.device import DeviceInfo
+from pynetinstall.network import UDPConnection
+from pynetinstall.plugins.simple import Plugin
 
 
 class Flasher:

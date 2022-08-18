@@ -3,7 +3,7 @@ import os
 from io import BufferedReader
 from configparser import ConfigParser
 
-from netinstall.device import DeviceInfo
+from pynetinstall.device import DeviceInfo
 
 
 class Plugin:

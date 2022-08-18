@@ -2,7 +2,7 @@ import socket
 import struct
 import fcntl
 
-from netinstall.device import DeviceInfo
+from pynetinstall.device import DeviceInfo
 
 
 class UDPConnection(socket.socket):
