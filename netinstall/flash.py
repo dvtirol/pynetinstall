@@ -12,10 +12,6 @@ from netinstall.device import DeviceInfo
 from netinstall.network import UDPConnection
 from netinstall.plugins.simple import Plugin
 
-"""
-Plugin Laden bei init
-Daten erst bei run
-"""
 
 class Flasher:
     """
@@ -31,13 +27,14 @@ class Flasher:
     ----------
     conn : UDPConnection
         A Socket Connection to send UDP Packets
-    dev_mac : bytes
-        The MAC-Address of the Device that will be flashed
-    pos : list
+    info : DeviceInfo
+        Information about the Device
+    state : list
         The current state of the flash (default: [0, 0])
     plugin : Plugin
         A Plugin to get the firmware and the configuration file 
         (Must include a .get_files(), has the Configuration as an attribute)
+    
     MAX_BYTES : int
         How many bytes the connection can receive at once (default: 1024)
 
@@ -49,7 +46,7 @@ class Flasher:
     write(data) -> None
         Writes `data` over the Connection
 
-    read(mac=False) -> tuple
+    read(mac=False) -> tuple[bytes, list] or tuple[bytes, list, bytes]
         Read `data` from the Connection
 
     run() -> None
@@ -58,7 +55,7 @@ class Flasher:
     do(data, response=None) -> None
         Execute one step of the Flashing  Process
 
-    do_file(file, max_pos) -> None
+    do_file(file, max_pos, file_name) -> None
         Send a `file` over the Connection
     
     do_files() -> None
@@ -67,26 +64,26 @@ class Flasher:
     wait() -> None
         Wait for something
 
+    reset() -> None
+        Reset the Flasher to be able to start a new flash
+
     Static Methods
     --------------
 
-    update_file_bar(curr_pos, max_pos, name, leng=50) -> None
-        Updated a Loading bar to display the progress when flashig a file
-
     resolve_file_data(data) -> tuple
         Gets information about a file
+
+    update_file_bar(curr_pos, max_pos, name, leng=50) -> None
+        Updated a Loading bar to display the progress when flashig a file
     """
 
-    conn: UDPConnection
     info: DeviceInfo
     state: list = [0, 0]
-    plugin: Plugin
     MAX_BYTES: int = 1024
 
-    def __init__(self) -> None:
+    def __init__(self, config_file: str = "config.ini") -> None:
         self.conn = UDPConnection()
-        self.plugin = self.load_config()
-
+        self.plugin = self.load_config(config_file)
 
     def load_config(self, config_file: str = "config.ini") -> Plugin:
         """
@@ -114,6 +111,7 @@ class Flasher:
         if not cparser.read(config_file):
             raise FileNotFoundError("Configuration not found")
         mod, _, cls = cparser["pynetinstall"]["plugin"].partition(":")
+        # Import the Plugin using the importlib library
         plug = getattr(importlib.import_module(mod, __name__), cls)
         return plug(config=cparser)
 
@@ -131,9 +129,9 @@ class Flasher:
         """
         self.conn.write(data, self.state)
 
-    def read(self, mac: bool = False) -> tuple:
+    def read(self, mac: bool = False) -> tuple[bytes, list] or tuple[bytes, list, bytes]:
         """
-        Read the `data` from the UDPConnection
+        Read `data` from the UDPConnection
         
         This function is used to pass the value of `state` and `dev_mac` 
         to the read function of the connection.
@@ -149,7 +147,7 @@ class Flasher:
         Returns
         -------
 
-         - bytes: The Data received
+         - bytes: The Data received (Without the first 6 bytes where the Device MAC is displayed)
          - list: The Position the Device returned
 
         Optional (when mac is True)
@@ -161,13 +159,13 @@ class Flasher:
         """
         Execute the 6 Steps displayed here:
 
-         1. Offer the Configuration to the routerboard
-         2. Formats the routerboard that the new Configuration can be flashed
-         3. Spacer to prepare the Routerboard for the Files
-         4.1. Sends the .npk file
-         4.2. Sends the .rsc file
-         5. Tells the board that the files can now be installed
-         6. Restarts the board
+         1.  Offer the Configuration to the routerboard
+         2.  Formats the routerboard that the new Configuration can be flashed
+         3.  Spacer to prepare the Routerboard for the Files
+         4.1 Sends the .npk file
+         4.2 Sends the .rsc file
+         5.  Tells the board that the files can now be installed
+         6.  Restarts the board
         """
 
         self.info = self.conn.get_device_info()
@@ -196,6 +194,9 @@ class Flasher:
         # Tell the board that it can now reboot and load the files
         print("Reboot")
         self.do(b"TERM\nInstallation successful\n")
+
+        # Reset the Flasher to default
+        self.reset()
         return
 
     def do(self, data: bytes, response: bytes = None) -> None:
@@ -219,8 +220,13 @@ class Flasher:
         else:
             self.wait()
             res, self.state = self.read()
+            # Response includes
+            # 1. Destination MAC Address    (6 bytes [:6])
+            # 2. A `0` as a Short           (2 bytes [6:8])
+            # 3. Length of the Data         (2 bytes [8:10])
+            # 4. State of the Flash         (4 bytes [10:14])
+            # 5. The Response we want       (? bytes [14:])
             if response == res[14:]:
-                
                 return True
             else:
                 return False
@@ -246,22 +252,25 @@ class Flasher:
             data = file.read(self.MAX_BYTES)
             self.write(data)
             self.state[0] += 1
+            # Waiting for a response from device to check that the device received the Data
             self.wait()
 
             file_pos += len(data)
             self.update_file_bar(file_pos, max_pos, file_name)
             if file_pos >= max_pos:
                 res, self.state = self.read()
-                if b"RETR" == res[14:]: # describe packet
+                # Response includes
+                # 1. Destination MAC Address    (6 bytes [:6])
+                # 2. A `0` as a Short           (2 bytes [6:8])
+                # 3. Length of the Data         (2 bytes [8:10])
+                # 4. State of the Flash         (4 bytes [10:14])
+                # 5. The Response we want       (? bytes [14:])
+                if b"RETR" == res[14:]:
+                    # Close the file when the installation is done
                     file.close()
                     return True
                 else:
-                    return False
-            else:
-                # dieses sleep ist der hauptgrund wieso das file so lange zum
-                # flashen braucht. je niedrieger desto schneller
-                # kann zu position errors durch timing issues fuehren
-                time.sleep(35 / 10000)
+                    raise Exception("File was not received properly")
         
     def do_files(self) -> None:
         """
@@ -276,7 +285,8 @@ class Flasher:
         self.do_file(npk_file, npk_file_size, npk_file_name)
 
         self.do(b"", b"RETR")
-        print("\nDone with File 1")
+        # \n because update_file_bar() is printing raw strings on one line
+        print("\nDone with the Firmware")
 
         # Send the .rsc file
         rsc_file, rsc_file_name, rsc_file_size = self.resolve_file_data(rsc)
@@ -284,10 +294,24 @@ class Flasher:
         self.do_file(rsc_file, rsc_file_size, rsc_file_name)
 
         self.do(b"", b"RETR")
-        print("\nDone with file 2")
+        # \n because update_file_bar() is printing raw strings on one line
+        print("\nDone with the Configuration File")
+
+    def wait(self) -> None:
+        """
+        Read some data from the connection to let some time pass
+        """
+        self.read()
+
+    def reset(self) -> None:
+        """
+        Reset the flasher to start the next flash
+        """
+        self.info = None
+        self.state = [0, 0]
 
     @staticmethod
-    def resolve_file_data(data) -> tuple:
+    def resolve_file_data(data) -> tuple[BufferedReader or parse.ParseResult, str, int]:
         """
         This function resolves some data from a file
 
@@ -295,35 +319,45 @@ class Flasher:
         ---------
         data : str, BufferedReader
             The information that is available for the file
-            (url, filename, BufferedReader)
+            (url, filename, path, BufferedReader)
+
+        Returns
+        -------
+
+         - BufferedReader or ParseResult: object with a .read() function 
+         - str: The name of the file
+         - int: The size of the file
+
+        Raises
+        ------
+
+        Exception
+            data does not result in any data
         """
+        # data is already Readable
         if isinstance(data, BufferedReader):
+            # Working
             size = getsize(data.name)
             name = basename(data.name)
             file = data
         else:
+            # data is a url to a file
             try:
+                # Not tested yet
                 par = parse.urlparse(data)
                 size = getsize(par)
                 name = basename(par)
                 file = request.urlopen(data)
             except:
+                # data is a filename/path
                 try:
+                    # Working
                     size = getsize(data)
                     name = basename(data)
                     file = open(data, "rb")
                 except:
                     raise Exception("Unable to get file file information")
         return file, name, size
-
-
-    def wait(self) -> None:
-        """
-        Read some data from the connection to let some time pass
-        """
-        _, st = self.read()
-        return st
-
 
     @staticmethod
     def update_file_bar(curr_pos: int, max_pos: int, name: str, leng: int = 50):
@@ -344,7 +378,10 @@ class Flasher:
         leng : int
             The length of the progress bar (default: 50)
         """
+        # Calculate the percentage of the progress
         proz = round((curr_pos/max_pos) * 100)
+        # Calculate how much > have to bo displayed
         done = round((leng/100) * proz)
+        # Create the string inside of the loading bar (`[]`)
         inner = "".join([">" for i in range(done)] + [" " for i in range(leng-done)])
         sys.stdout.write(f"\rFlashing {name} - [{inner}] {proz}%")
