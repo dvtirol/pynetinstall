@@ -7,6 +7,8 @@ from netinstall.device import DeviceInfo
 
 class UDPConnection(socket.socket):
     """
+    `Subclass of socket.socket`
+
     This object represents the UDP connection to the Mikrotik Routerboard
 
     It handles the reading/writing between the devices
@@ -18,13 +20,12 @@ class UDPConnection(socket.socket):
         The MAC Address of the `interface_name` Interface of the Raspberry
     dev_mac : bytes
         The MAC Address of the Device
+
     MAX_ERRORS : int
         How often a Function gets repeated before it raises an error
     MAX_BYTES_RECV : int
         The amout of bytes to receive at once
 
-    _last_message : bytes
-        The last sended message
     _repeat : int
         A Counter how often a Function was repeat
 
@@ -45,7 +46,6 @@ class UDPConnection(socket.socket):
     """
     mac: bytes
     dev_mac: bytes
-    _last_message: bytes = None
     _repeat: int = 0
 
     def __init__(self, addr: tuple = ("0.0.0.0", 5000), interface_name: str = "eth0", error_repeat: int = 5,
@@ -83,7 +83,7 @@ class UDPConnection(socket.socket):
         arg = struct.pack('256s', bytes(self._interface_name, 'utf-8')[:15])
         self.mac = fcntl.ioctl(self.fileno(), 0x8927, arg)[18:24]
 
-    def read(self, state: tuple, check_mac: bytes = None, mac: bool = False) -> tuple:
+    def read(self, state: list, check_mac: bytes = None, mac: bool = False) -> tuple:
         """
         Reads `MAX_BYTES_RECV` (int) from the socket and returns the bytes.
 
@@ -114,10 +114,10 @@ class UDPConnection(socket.socket):
         data, addr = self.recvfrom(self.MAX_BYTES_RECV)
         header_state = []
         if addr[0] == "0.0.0.0":
+            # The fist 6 bytes are the MAC Address of the source 
             header_mac: bytes = data[:6]
+            # From bytes 16 to 20 the states are displayed
             header_state: list[int] = [*struct.unpack("<HH", data[16:20])]
-            # Header counter + 1
-            # or they are the same when no data was sent just the information is spammed by the Device
             if check_mac:
                 if check_mac == header_mac:
                     if header_state == state:
@@ -131,7 +131,9 @@ class UDPConnection(socket.socket):
                     if mac is True:
                         return data, header_state, header_mac
                     return data[6:], header_state
+        # Count up the _repeat Attribute to make sure the programm does not get in a loop
         self._repeat += 1
+        # Restart the Function
         return self.read(state, check_mac, mac)
 
     def write(self, data: bytes, state: list, recv_addr: tuple = ("255.255.255.255", 5000)) -> None:
@@ -148,11 +150,16 @@ class UDPConnection(socket.socket):
         recv_addr : tuple
             A Address pair to where the Connection sends the data to (default: ("255.255.255.255, 5000))
         """
-        # message = self.mac + self.dev_mac + int(0).to_bytes(2, "little") + len(data).to_bytes(2, "little") + state[0].to_bytes(2, "little") + state[1].to_bytes(2, "little") + data
+        # Overview of the Data
+        # 1. The MAC Address of the source          (6 bytes)
+        # 2. The MAC Address of the destination     (6 bytes)
+        # 3. A `0` as a Short                       (2 bytes)
+        # 4. The length of the Data                 (2 bytes)
+        # 5. The State of the Server                (2 bytes)
+        # 6. The State of the Client                (2 bytes)
+        # 7. The data                               (? bytes)
         message = self.mac + self.dev_mac + struct.pack("<HHHH", 0, len(data), state[1], state[0]) + data
-        # print(f"Write: {len(message)} bytes")
         self.sendto(message, recv_addr)
-        self._last_message = message
 
     def get_device_info(self) -> DeviceInfo:
         r"""
@@ -178,6 +185,6 @@ class UDPConnection(socket.socket):
         """
         print("Searching for a Device...")
         data, _, self.dev_mac = self.read([1, 0], mac=True)
-        print(f"MAC Address: \n - Raspberry: {self.mac}\n - Board: {self.dev_mac}")
+        # print(f"MAC Address: \n - Raspberry: {self.mac}\n - Board: {self.dev_mac}")
         print("Device Found")
         return DeviceInfo.from_data(data)
