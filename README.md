@@ -9,12 +9,12 @@ Running a netinstall on a Mikrotik Router Board using a Raspberry Pi and Python
 * [Raspberry Pi 3](https://www.raspberrypi.com/products/) or newer
 * [Mikrotik Router Board](https://www.mikrotik-store.eu/en/MikroTik-CA150) or similar
 
-## Quik start
+## Quick start
 ```shell
 pi@raspberrypi:~$ git clone https://github.com/dvtirol/pynetinstall
-pi@raspberrypi:~$ chmod a+rx setup.sh
-pi@raspberrypi:~$ ./setup.sh
-
+pi@raspberrypi:~$ cd pyNetinstall
+pi@raspberrypi:~$ chmod a+rx shell/setup.sh
+pi@raspberrypi:~$ ./shell/setup.sh
 ```
 
 ------------
