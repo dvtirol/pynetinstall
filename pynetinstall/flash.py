@@ -301,6 +301,7 @@ class Flasher:
 
         # Send the .rsc file
         rsc_file, rsc_file_name, rsc_file_size = self.resolve_file_data(rsc)
+        rsc_file_name = "autorun.scr"
         self.do(bytes(f"FILE\n{rsc_file_name}\n{str(rsc_file_size)}\n", "utf-8"), b"RETR")
         self.do_file(rsc_file, rsc_file_size, rsc_file_name)
 
