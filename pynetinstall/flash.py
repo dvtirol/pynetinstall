@@ -184,7 +184,7 @@ class Flasher:
             # Errno 101 Network is unreachable
             except OSError:
                 if cnt > 5:
-                    raise Exception("Network is unreachable (Run the start.sh file again)")
+                    raise Exception("Network is unreachable (Run the main.py file again)")
                 cnt += 1
                 pass
         # Format the board
