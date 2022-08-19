@@ -281,7 +281,7 @@ class Flasher:
                     raise Exception("File was not received properly")
             else:
                 # main reason why the flash is so slow but without this sleep state errors occur
-                time.sleep(35 / 10000)
+                time.sleep(0.005)
         
     def do_files(self) -> None:
         """
