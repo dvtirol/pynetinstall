@@ -82,6 +82,19 @@ class Flasher:
     MAX_BYTES: int = 1024
 
     def __init__(self, config_file: str = "config.ini", addr: tuple[str, int] = ("0.0.0.0", 5000), interface_name: str = "eth0") -> None:
+        """
+        Initialization of a new Flasher
+
+        Arguments
+        ---------
+
+        config_file : str
+            The location of the configuration file (default: config.ini)
+        addr : tuple[str, int]
+            The address to bind the Connection to (default: (0.0.0.0, 5000))
+        interface_name : str
+            The interface of the Raspberry Pi where the Routerboard is connected to.
+        """
         self.conn = UDPConnection(addr, interface_name)
         self.plugin = self.load_config(config_file)
 
