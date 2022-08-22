@@ -1,9 +1,12 @@
-from pyNetinstall.pynetinstall.device import DeviceInfo
+from pynetinstall.device import DeviceInfo
 from pynetinstall.network import UDPConnection
 from pynetinstall import Flasher
 
 import time
+import logging
 from multiprocessing import Process
+
+logging.basicConfig(level=logging.DEBUG)
 
 proc = None
 connection = UDPConnection()
@@ -22,6 +25,7 @@ while True:
                 time.sleep(10)
             if not proc.is_alive():
                 proc = None
+        else:
+            logging.debug("The new device is already configured")
     except KeyboardInterrupt:
-        print("Stopping the Flasher")
-        break
+        logging.info("The KeyboardInterrupt stopped the Flash")

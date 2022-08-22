@@ -221,6 +221,7 @@ class Flasher:
 
         # Reset the Flasher to default
         self.reset()
+        logging.info(f"The Device [{info.mac}] was successfully flashed")
         return
 
     def do(self, data: bytes, response: bytes = None) -> None:
