@@ -284,7 +284,7 @@ class Flasher:
             self.wait()
 
             file_pos += len(data)
-            self.update_file_bar(file_pos, max_pos, file_name)
+            # self.update_file_bar(file_pos, max_pos, file_name)
             if file_pos >= max_pos:
                 res, self.state = self.read()
                 # Response includes
