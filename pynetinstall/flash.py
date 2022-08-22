@@ -171,7 +171,7 @@ class Flasher:
         """
         return self.conn.read(self.state, self.info.mac, mac)
 
-    def run(self) -> None:
+    def run(self, info: DeviceInfo = None) -> None:
         """
         Execute the 6 Steps displayed here:
 
@@ -183,8 +183,10 @@ class Flasher:
          5.  Tells the board that the files can now be installed
          6.  Restarts the board
         """
-
-        self.info = self.conn.get_device_info()
+        if info is None:
+            self.info = self.conn.get_device_info()
+        else:
+            self.info = info
         # Offer the flash
         print("Sent the offer to flash")
         # Counter to count when you are not able to connect to the Network

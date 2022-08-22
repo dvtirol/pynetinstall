@@ -136,11 +136,3 @@ When you see the line (in the CLI of the Routerboard):
 
 	You can start the main.py
 `python main.py`
-
-------------
-
-
-###### Error that still exist and is not able to be fixed
-	OSError [Errno 101] Network is unreachable
-Start the start.sh file this should "fix" this error
-
