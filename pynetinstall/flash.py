@@ -81,8 +81,8 @@ class Flasher:
     state: list = [0, 0]
     MAX_BYTES: int = 1024
 
-    def __init__(self, config_file: str = "config.ini") -> None:
-        self.conn = UDPConnection()
+    def __init__(self, config_file: str = "config.ini", addr: tuple[str, int] = ("0.0.0.0", 5000), interface_name: str = "eth0") -> None:
+        self.conn = UDPConnection(addr, interface_name)
         self.plugin = self.load_config(config_file)
 
     def load_config(self, config_file: str = "config.ini") -> Plugin:
