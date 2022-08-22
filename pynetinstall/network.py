@@ -1,6 +1,7 @@
+import fcntl
 import socket
 import struct
-import fcntl
+import logging
 
 from pynetinstall.device import DeviceInfo
 
@@ -74,6 +75,7 @@ class UDPConnection(socket.socket):
         self.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
         self.bind(addr)
+        logging.debug(f"A New UDPConnection is created on ({addr})")
         self._get_source_mac()
 
     def _get_source_mac(self) -> None:
@@ -82,6 +84,7 @@ class UDPConnection(socket.socket):
         """
         arg = struct.pack('256s', bytes(self._interface_name, 'utf-8')[:15])
         self.mac = fcntl.ioctl(self.fileno(), 0x8927, arg)[18:24]
+        logging.debug(f"The MAC-Address of the Interface {self._interface_name} is {self.mac}")
 
     def read(self, state: list, check_mac: bytes = None, mac: bool = False) -> tuple:
         """
@@ -181,8 +184,7 @@ class UDPConnection(socket.socket):
 
          - DeviceInfo: A object with all the information of the Device
         """
-        print("Searching for a Device...")
+        logging.debug("Searching for a Device...")
         data, _, self.dev_mac = self.read([1, 0], mac=True)
-        # print(f"MAC Address: \n - Raspberry: {self.mac}\n - Board: {self.dev_mac}")
-        print("Device Found")
+        logging.debug(f"Device Found: {self.dev_mac}")
         return DeviceInfo.from_data(data)
