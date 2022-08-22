@@ -95,8 +95,8 @@ class Flasher:
         interface_name : str
             The interface of the Raspberry Pi where the Routerboard is connected to.
         """
-        self.conn = UDPConnection(addr, interface_name)
         self.plugin = self.load_config(config_file)
+        self.conn = UDPConnection(addr, interface_name)
 
     def load_config(self, config_file: str = "config.ini") -> Plugin:
         """
@@ -122,7 +122,7 @@ class Flasher:
         
         cparser = ConfigParser()
         if not cparser.read(config_file):
-            raise FileNotFoundError("Configuration not found")
+                raise FileNotFoundError("Configuration not found")
         try:
             mod, _, cls = cparser["pynetinstall"]["plugin"].partition(":")
             # Import the Plugin using the importlib library
