@@ -113,6 +113,7 @@ class UDPConnection(socket.socket):
             raise Exception(f"The function was called more than {self.MAX_ERRORS} times for the execution of the {state} State")
         data, addr = self.recvfrom(self.MAX_BYTES_RECV)
         header_state = []
+        # if addr[0] == "127.0.0.1": # Swap this lines with the line below when testing
         if addr[0] == "0.0.0.0":
             # The fist 6 bytes are the MAC Address of the source 
             header_mac: bytes = data[:6]
@@ -178,10 +179,7 @@ class UDPConnection(socket.socket):
         Returns
         -------
 
-         - bytes: The MAC Address of the Device (e.g. \x00\x0cB\xac\x21)
-         - str: What model the Device is (e.g.: RB450G)
-         - str: The Architecture of the Device (e.g.: mips)
-         - str: The min OS what the Device Requires (e.g.: 6.45.9)
+         - DeviceInfo: A object with all the information of the Device
         """
         print("Searching for a Device...")
         data, _, self.dev_mac = self.read([1, 0], mac=True)
