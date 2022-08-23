@@ -1,9 +1,9 @@
 import io
 import sys
 import time
-import logging
 import importlib
 
+from logging import getLogger
 from io import BufferedReader
 from urllib import request, parse
 from os.path import getsize, basename
@@ -12,6 +12,11 @@ from configparser import ConfigParser
 from pynetinstall.device import DeviceInfo
 from pynetinstall.network import UDPConnection
 from pynetinstall.plugins.simple import Plugin
+
+
+deb_logger = getLogger("pynet-deb")
+inf_logger = getLogger("pynet-inf")
+err_logger = getLogger("pynet-err")
 
 
 class Flasher:
@@ -96,7 +101,7 @@ class Flasher:
         interface_name : str
             The interface of the Raspberry Pi where the Routerboard is connected to.
         """
-        logging.debug("Initialization of a new Flasher object")
+        deb_logger.debug("Initialization of a new Flasher object")
         self.plugin = self.load_config(config_file)
         self.conn = UDPConnection(addr, interface_name)
 
@@ -124,16 +129,16 @@ class Flasher:
         
         cparser = ConfigParser()
         if not cparser.read(config_file):
-                logging.error(f"The Configuration File ({config_file}) was not found")
+                err_logger.error(f"The Configuration File ({config_file}) was not found")
                 raise FileNotFoundError("Configuration not found")
         try:
             mod, _, cls = cparser["pynetinstall"]["plugin"].partition(":")
             # Import the Plugin using the importlib library
             plug = getattr(importlib.import_module(mod, __name__), cls)
-            logging.debug(f"The Plugin ({plug}) is successfully imported")
+            deb_logger.debug(f"The Plugin ({plug}) is successfully imported")
             return plug(config=cparser)
         except:
-            logging.debug(f"The Default Plugin is successfully imported")
+            deb_logger.debug(f"The Default Plugin is successfully imported")
             return Plugin(config=cparser)
 
     def write(self, data: bytes) -> None:
@@ -148,7 +153,6 @@ class Flasher:
         data : bytes
             The data you want to write to the connection as bytes
         """
-        logging.log(1, fr"Write Data to the Connection: {data}")
         self.conn.write(data, self.state)
 
     def read(self, mac: bool = False) -> tuple[bytes, list] or tuple[bytes, list, bytes]:
@@ -176,7 +180,6 @@ class Flasher:
          - bytes: The Mac address of the Device
         """
         data = self.conn.read(self.state, self.info.mac, mac)
-        logging.log(1, fr"Read data from the Connection: {data}")
         return data
 
     def run(self, info: DeviceInfo = None) -> None:
@@ -196,32 +199,33 @@ class Flasher:
         else:
             self.info = info
         # Offer the flash
-        logging.debug("Sending the offer to flash")
+        deb_logger.debug("Sending the offer to flash")
         try:
             self.state = [0, 0]
             self.do(b"OFFR\n\n", b"YACK\n")
         # Errno 101 Network is unreachable
         except OSError:
-            return
+            err_logger.error("Could not connect to the Network. Trying again... ([ERRNO 101] Network is unreachable)")
+            sys.exit(1)
         # Format the board
-        logging.debug("Formatting the board")
+        deb_logger.debug("Formatting the board")
         self.do(b"", b"STRT")
         # Spacer to give the board some time to prepare for the file
-        logging.debug("Spacer")
+        deb_logger.debug("Spacer")
         self.do(b"", b"RETR")
         # Send the files
-        logging.debug("Files")
+        deb_logger.debug("Files")
         self.do_files()
         # Tell the board that the installation is done
-        logging.debug("Installation Done")
+        deb_logger.debug("Installation Done")
         self.do(b"FILE\n", b"WTRM")
         # Tell the board that it can now reboot and load the files
-        logging.debug("Reboot")
+        deb_logger.debug("Reboot")
         self.do(b"TERM\nInstallation successful\n")
 
         # Reset the Flasher to default
         self.reset()
-        logging.info(f"The Device [{info.mac}] was successfully flashed")
+        inf_logger.info(f"The Device [{info.mac}] was successfully flashed")
         return
 
     def do(self, data: bytes, response: bytes = None) -> None:
@@ -236,7 +240,7 @@ class Flasher:
         response : bytes
             What to expect as a Response from the Device (default: None)
         """
-        logging.debug(f"Executing the {data} command")
+        deb_logger.debug(f"Executing the {data} command")
         self.state[1] += 1
         self.write(data)
         self.state[0] += 1
@@ -244,7 +248,7 @@ class Flasher:
         if response is None:
             return True
         else:
-            logging.debug(f"Waiting for the Response {response}")
+            deb_logger.debug(f"Waiting for the Response {response}")
             self.wait()
             res, self.state = self.read()
             # Response includes
@@ -256,7 +260,7 @@ class Flasher:
             if response == res[14:]:
                 return True
             else:
-                logging.debug(f"Trying the command {data} again")
+                deb_logger.debug(f"Trying the command {data} again")
                 self.do(data, response)
 
     def do_file(self, file: io.BufferedReader, max_pos: int, file_name: str) -> None:
@@ -312,22 +316,23 @@ class Flasher:
 
         # Send the .npk file
         npk_file, npk_file_name, npk_file_size = self.resolve_file_data(npk)
-        logging.debug(f"Send the {npk_file_name}-File to the routerboard")
+        deb_logger.debug(f"Send the {npk_file_name}-File to the routerboard")
         self.do(bytes(f"FILE\n{npk_file_name}\n{str(npk_file_size)}\n", "utf-8"), b"RETR")
+
         self.do_file(npk_file, npk_file_size, npk_file_name)
 
         self.do(b"", b"RETR")
-        logging.debug("Done with the Firmware")
+        deb_logger.debug("Done with the Firmware")
 
         # Send the .rsc file
         rsc_file, rsc_file_name, rsc_file_size = self.resolve_file_data(rsc)
-        logging.debug(f"Send the {rsc_file_name}-File (autorun.scr) to the routerboard")
+        deb_logger.debug(f"Send the {rsc_file_name}-File (autorun.scr) to the routerboard")
         rsc_file_name = "autorun.scr"
         self.do(bytes(f"FILE\n{rsc_file_name}\n{str(rsc_file_size)}\n", "utf-8"), b"RETR")
         self.do_file(rsc_file, rsc_file_size, rsc_file_name)
 
         self.do(b"", b"RETR")
-        logging.debug("Done with the Configuration File")
+        deb_logger.debug("Done with the Configuration File")
 
     def wait(self) -> None:
         """
@@ -372,7 +377,7 @@ class Flasher:
             size = getsize(data.name)
             name = basename(data.name)
             file = data
-            logging.debug("Resolved File-Data from the BufferedReader")
+            deb_logger.debug("Resolved File-Data from the BufferedReader")
         else:
             # data is a url to a file
             try:
@@ -381,7 +386,7 @@ class Flasher:
                 size = getsize(par)
                 name = basename(par)
                 file = request.urlopen(data)
-                logging.debug("Resolved File-Data from the URL")
+                deb_logger.debug("Resolved File-Data from the URL")
             except:
                 # data is a filename/path
                 try:
@@ -389,9 +394,9 @@ class Flasher:
                     size = getsize(data)
                     name = basename(data)
                     file = open(data, "rb")
-                    logging.debug("Resolved File-Data from the Path/Filename")
+                    deb_logger.debug("Resolved File-Data from the Path/Filename")
                 except:
-                    logging.error(f"Unable to get information to the file/url/BufferedReader ({data})")
+                    err_logger.error(f"Unable to get information to the file/url/BufferedReader ({data})")
                     sys.exit(2)
         return file, name, size
 

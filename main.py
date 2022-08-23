@@ -1,19 +1,30 @@
 from pynetinstall.device import DeviceInfo
 from pynetinstall.network import UDPConnection
 from pynetinstall import Flasher
+from pynetinstall.log import setup_logger
 
 import time
-import logging
+from logging import getLogger, DEBUG, ERROR, INFO
 from multiprocessing import Process
 
-logging.basicConfig(level=logging.DEBUG)
+
+setup_logger("pynet-deb", DEBUG, "logs/pynetdebug.log", "%(asctime)s - [%(levelname)s] -> %(message)s", True)
+setup_logger("pynet-err", ERROR, "logs/pyneterr.log", "%(asctime)s - [%(levelname)s] (%(module)s.%(funcName)s:%(lineno)s) -> %(message)s", True)
+setup_logger("pynet-inf", INFO, "logs/pynetinfo.log", "%(asctime)s - [%(levelname)s] -> %(message)s", True)
+
+deb_logger = getLogger("pynet-deb")
+inf_logger = getLogger("pynet-inf")
+err_logger = getLogger("pynet-err")
+
 
 proc = None
-connection = UDPConnection()
-last_info = DeviceInfo(None, None, None, None)
-while True:
-    info = UDPConnection().get_device_info()
-    try:
+try:
+    connection = UDPConnection()
+    last_info = DeviceInfo(None, None, None, None)
+    while True:
+        info = connection.get_device_info()
+        if info is None:
+            continue
         if info.mac != last_info.mac and proc is None:
             flash = Flasher()
             flash.conn.dev_mac = info.mac
@@ -26,6 +37,6 @@ while True:
             if not proc.is_alive():
                 proc = None
         else:
-            logging.debug("The new device is already configured")
-    except KeyboardInterrupt:
-        logging.info("The KeyboardInterrupt stopped the Flash")
+            deb_logger.debug("The new device is already configured")
+except KeyboardInterrupt:
+    inf_logger.info("The KeyboardInterrupt stopped the Flash")

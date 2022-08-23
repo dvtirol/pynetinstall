@@ -1,9 +1,15 @@
 import fcntl
 import socket
 import struct
-import logging
+
+from logging import getLogger
 
 from pynetinstall.device import DeviceInfo
+
+
+deb_logger = getLogger("pynet-deb")
+inf_logger = getLogger("pynet-inf")
+err_logger = getLogger("pynet-err")
 
 
 class UDPConnection(socket.socket):
@@ -75,7 +81,7 @@ class UDPConnection(socket.socket):
         self.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
         self.bind(addr)
-        logging.debug(f"A New UDPConnection is created on ({addr})")
+        deb_logger.debug(f"A New UDPConnection is created on ({addr})")
         self._get_source_mac()
 
     def _get_source_mac(self) -> None:
@@ -84,7 +90,7 @@ class UDPConnection(socket.socket):
         """
         arg = struct.pack('256s', bytes(self._interface_name, 'utf-8')[:15])
         self.mac = fcntl.ioctl(self.fileno(), 0x8927, arg)[18:24]
-        logging.debug(f"The MAC-Address of the Interface {self._interface_name} is {self.mac}")
+        deb_logger.debug(f"The MAC-Address of the Interface {self._interface_name} is {self.mac}")
 
     def read(self, state: list, check_mac: bytes = None, mac: bool = False) -> tuple:
         """
@@ -113,7 +119,8 @@ class UDPConnection(socket.socket):
          - bytes: The MAC Address of the Source
         """
         if self._repeat > self.MAX_ERRORS:
-            raise Exception(f"The function was called more than {self.MAX_ERRORS} times for the execution of the {state} State")
+            err_logger.error(f"The function was called more than {self.MAX_ERRORS} times for the execution of the {state} State")
+            return
         data, addr = self.recvfrom(self.MAX_BYTES_RECV)
         header_state = []
         # if addr[0] == "127.0.0.1": # Swap this lines with the line below when testing
@@ -184,7 +191,11 @@ class UDPConnection(socket.socket):
 
          - DeviceInfo: A object with all the information of the Device
         """
-        logging.debug("Searching for a Device...")
-        data, _, self.dev_mac = self.read([1, 0], mac=True)
-        logging.debug(f"Device Found: {self.dev_mac}")
-        return DeviceInfo.from_data(data)
+        deb_logger.debug("Searching for a Device...")
+        read_data = self.read([1, 0], mac=True)
+        if read_data is None:
+            return
+        else:
+            data, _, self.dev_mac = read_data
+            deb_logger.debug(f"Device Found: {self.dev_mac}")
+            return DeviceInfo.from_data(data)
