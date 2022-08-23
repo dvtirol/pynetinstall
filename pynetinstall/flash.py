@@ -227,7 +227,7 @@ class Flasher:
 
         # Reset the Flasher to default
         self.reset()
-        self.logger.info(f"The Device [{info.mac}] was successfully flashed")
+        self.logger.info(f"The Device [{info.mac}] is successfully flashed")
         return
 
     def do(self, data: bytes, response: bytes = None) -> None:
@@ -430,38 +430,49 @@ class Flasher:
 
 class FlashDevice:
     _already: int = 0
-    last_mac: bytes
-    process: Process
+    last_mac: bytes = b"DUMMY"
+    process: Process = None
     def __init__(self, log_level: int = logging.INFO, already: int = 5) -> None:
         self.MAX_ALREADY: int = already
-        self.logger = Logger()
+        self.logger = Logger(log_level)
         self.connection = UDPConnection(logger=self.logger)
 
     def flash_once(self) -> None:
+        self.logger.info("Flashing one Device the stoping program...")
         device = self.connection.get_device_info()
         flash = Flasher(device.mac, logger=self.logger)
         flash.run(device)
+        self.connection.close()
 
     def flash_until_stopped(self) -> None:
+        self.logger.info("Flashing until someone stops the program...")
         try:
             while True:
                 device = self.connection.get_device_info()
+                # Sleep for some seconds to give the device some time to connect to the Network
                 time.sleep(5)
                 if device is None:
                     continue
-                if device.mac != self.last_mac and self.process is None:
-                    flash = Flasher(mac=device.mac, logger=self.logger)
-                    self.process = Process(target=flash.run, args=(device,))
-                    self.process.start()
-                    self.process.join()
-                    if self.process.exitcode == 0:
-                        self.last_mac = device.mac
-                        time.sleep(10)
+                if device.mac != self.last_mac:
+                    if self.logger.quiet:
+                        self.logger.debug(f"Device Found: {device.mac}")
+                        self.logger.quiet = False
                     if not self.process.is_alive():
-                        self.process = None
+                        flash = Flasher(mac=device.mac, logger=self.logger)
+                        self.process = Process(target=flash.run, args=(device,))
+                        self.process.start()
+                        # Wait for the Process to finish
+                        self.process.join()
+                        if self.process.exitcode == 0:
+                            self.last_mac = device.mac
+                            self._already = 0
+                            # Wait for the device to reboot to not get any requests after the reboot
+                            time.sleep(10)
                 else:
-                    if self._already != 0:
-                        self.logger.debug("The new Device is already configured")
-                    self._already += 1
+                    if self._already == 0:
+                        self.logger.quiet = True
+                        self.logger.debug("The Device [{device.mac}] is already configured")
+                        self._already = 1
         except KeyboardInterrupt:
+            self.connection.close()
             self.logger.info("The Flash got Stopped")
