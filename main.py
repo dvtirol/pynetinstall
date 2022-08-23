@@ -1,42 +1,43 @@
-from pynetinstall.device import DeviceInfo
-from pynetinstall.network import UDPConnection
-from pynetinstall import Flasher
-from pynetinstall.log import setup_logger
+import logging.config
+
+# Setup Logging
+logging.config.fileConfig("pynetinstall/logging.ini")
 
 import time
-from logging import getLogger, DEBUG, ERROR, INFO
+import logging
 from multiprocessing import Process
 
-
-setup_logger("pynet-deb", DEBUG, "logs/pynetdebug.log", "%(asctime)s - [%(levelname)s] -> %(message)s", True)
-setup_logger("pynet-err", ERROR, "logs/pyneterr.log", "%(asctime)s - [%(levelname)s] (%(module)s.%(funcName)s:%(lineno)s) -> %(message)s", True)
-setup_logger("pynet-inf", INFO, "logs/pynetinfo.log", "%(asctime)s - [%(levelname)s] -> %(message)s", True)
-
-deb_logger = getLogger("pynet-deb")
-inf_logger = getLogger("pynet-inf")
-err_logger = getLogger("pynet-err")
+from pynetinstall.log import Logger
+from pynetinstall.flash import Flasher
+from pynetinstall.device import DeviceInfo
+from pynetinstall.network import UDPConnection
 
 
+logger = Logger()
 proc = None
+last_mac: bytes = None
+already_cnt: int = 0
+MAX_ALREADY: int = 5
 try:
-    connection = UDPConnection()
+    connection = UDPConnection(logger=logger)
     last_info = DeviceInfo(None, None, None, None)
     while True:
         info = connection.get_device_info()
+        time.sleep(5)
         if info is None:
             continue
-        if info.mac != last_info.mac and proc is None:
-            flash = Flasher()
+        if info.mac != last_mac and proc is None:
+            flash = Flasher(logger=logger)
             flash.conn.dev_mac = info.mac
             proc = Process(target=flash.run, args=(info,))
             proc.start()
             proc.join()
             if proc.exitcode == 0:
-                last_info = info
+                last_mac = info.mac
                 time.sleep(10)
             if not proc.is_alive():
                 proc = None
         else:
-            deb_logger.debug("The new device is already configured")
+            logger.debug("The new device is already configured")
 except KeyboardInterrupt:
-    inf_logger.info("The KeyboardInterrupt stopped the Flash")
+    logger.info("The KeyboardInterrupt stopped the Flash")

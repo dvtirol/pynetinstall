@@ -2,14 +2,8 @@ import fcntl
 import socket
 import struct
 
-from logging import getLogger
-
+from pynetinstall.log import Logger
 from pynetinstall.device import DeviceInfo
-
-
-deb_logger = getLogger("pynet-deb")
-inf_logger = getLogger("pynet-inf")
-err_logger = getLogger("pynet-err")
 
 
 class UDPConnection(socket.socket):
@@ -55,7 +49,7 @@ class UDPConnection(socket.socket):
     dev_mac: bytes
     _repeat: int = 0
 
-    def __init__(self, addr: tuple = ("0.0.0.0", 5000), interface_name: str = "eth0", error_repeat: int = 5,
+    def __init__(self, addr: tuple = ("0.0.0.0", 5000), interface_name: str = "eth0", error_repeat: int = 5, logger: Logger = None,
                  family: socket.AddressFamily or int = socket.AF_INET, kind: socket.SocketKind or int = socket.SOCK_DGRAM, *args, **kwargs) -> None:
         """
         Initialize a new UDPConnection
@@ -76,12 +70,13 @@ class UDPConnection(socket.socket):
         """
         super().__init__(family, kind, *args, **kwargs)
         self._interface_name = interface_name
+        self.logger = logger
         self.MAX_ERRORS = error_repeat
         self.MAX_BYTES_RECV = 1024
         self.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
         self.bind(addr)
-        deb_logger.debug(f"A New UDPConnection is created on ({addr})")
+        self.logger.debug(f"A New UDPConnection is created on ({addr})")
         self._get_source_mac()
 
     def _get_source_mac(self) -> None:
@@ -90,7 +85,7 @@ class UDPConnection(socket.socket):
         """
         arg = struct.pack('256s', bytes(self._interface_name, 'utf-8')[:15])
         self.mac = fcntl.ioctl(self.fileno(), 0x8927, arg)[18:24]
-        deb_logger.debug(f"The MAC-Address of the Interface {self._interface_name} is {self.mac}")
+        self.logger.debug(f"The MAC-Address of the Interface {self._interface_name} is {self.mac}")
 
     def read(self, state: list, check_mac: bytes = None, mac: bool = False) -> tuple:
         """
@@ -119,7 +114,9 @@ class UDPConnection(socket.socket):
          - bytes: The MAC Address of the Source
         """
         if self._repeat > self.MAX_ERRORS:
-            err_logger.error(f"The function was called more than {self.MAX_ERRORS} times for the execution of the {state} State")
+            if state != [1, 0]: 
+                self.logger.error(f"The function was called more than {self.MAX_ERRORS} times for the execution of the {state} State")
+            self._repeat = 0
             return
         data, addr = self.recvfrom(self.MAX_BYTES_RECV)
         header_state = []
@@ -172,7 +169,7 @@ class UDPConnection(socket.socket):
         message = self.mac + self.dev_mac + struct.pack("<HHHH", 0, len(data), state[1], state[0]) + data
         self.sendto(message, recv_addr)
 
-    def get_device_info(self) -> DeviceInfo:
+    def get_device_info(self, log: bool = True) -> DeviceInfo:
         r"""
         This function collects some information about the routerboard
 
@@ -191,11 +188,12 @@ class UDPConnection(socket.socket):
 
          - DeviceInfo: A object with all the information of the Device
         """
-        deb_logger.debug("Searching for a Device...")
+        if log:
+            self.logger.debug("Searching for a Device...")
         read_data = self.read([1, 0], mac=True)
         if read_data is None:
             return
         else:
             data, _, self.dev_mac = read_data
-            deb_logger.debug(f"Device Found: {self.dev_mac}")
+            self.logger.debug(f"Device Found: {self.dev_mac}")
             return DeviceInfo.from_data(data)
