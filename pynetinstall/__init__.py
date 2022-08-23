@@ -1,3 +1,3 @@
-__all__ = ["Flasher"]
+__all__ = ["FlashDevice"]
 
-from .flash import Flasher
+from .flash import FlashDevice

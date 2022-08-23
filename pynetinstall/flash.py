@@ -85,7 +85,7 @@ class Flasher:
     state: list = [0, 0]
     MAX_BYTES: int = 1024
 
-    def __init__(self, config_file: str = "config.ini", addr: tuple[str, int] = ("0.0.0.0", 5000), interface_name: str = "eth0", logger: Logger = None) -> None:
+    def __init__(self, config_file: str = "config.ini", addr: tuple[str, int] = ("0.0.0.0", 5000), interface_name: str = "eth0", mac: bytes = None, logger: Logger = None) -> None:
         """
         Initialization of a new Flasher
 
@@ -103,6 +103,8 @@ class Flasher:
         self.logger.debug("Initialization of a new Flasher object")
         self.plugin = self.load_config(config_file)
         self.conn = UDPConnection(addr, interface_name, logger=logger)
+        if mac is not None:
+            self.conn.dev_mac = mac
 
     def load_config(self, config_file: str = "config.ini") -> Plugin:
         """
@@ -425,3 +427,41 @@ class Flasher:
         # Create the string inside of the loading bar (`[]`)
         inner = "".join([">" for i in range(done)] + [" " for i in range(leng-done)])
         sys.stdout.write(f"\rFlashing {name} - [{inner}] {proz}%")
+
+class FlashDevice:
+    _already: int = 0
+    last_mac: bytes
+    process: Process
+    def __init__(self, log_level: int = logging.INFO, already: int = 5) -> None:
+        self.MAX_ALREADY: int = already
+        self.logger = Logger()
+        self.connection = UDPConnection(logger=self.logger)
+
+    def flash_once(self) -> None:
+        device = self.connection.get_device_info()
+        flash = Flasher(device.mac, logger=self.logger)
+        flash.run(device)
+
+    def flash_until_stopped(self) -> None:
+        try:
+            while True:
+                device = self.connection.get_device_info()
+                time.sleep(5)
+                if device is None:
+                    continue
+                if device.mac != self.last_mac and self.process is None:
+                    flash = Flasher(mac=device.mac, logger=self.logger)
+                    self.process = Process(target=flash.run, args=(device,))
+                    self.process.start()
+                    self.process.join()
+                    if self.process.exitcode == 0:
+                        self.last_mac = device.mac
+                        time.sleep(10)
+                    if not self.process.is_alive():
+                        self.process = None
+                else:
+                    if self._already != 0:
+                        self.logger.debug("The new Device is already configured")
+                    self._already += 1
+        except KeyboardInterrupt:
+            self.logger.info("The Flash got Stopped")
