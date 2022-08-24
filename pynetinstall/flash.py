@@ -5,7 +5,6 @@ import time
 import importlib
 
 from io import BufferedReader
-from logging import getLogger
 from urllib import request, parse
 from multiprocessing import Process
 from os.path import getsize, basename
@@ -200,7 +199,7 @@ class Flasher:
         else:
             self.info = info
         # Offer the flash
-        self.logger.debug("Sending the offer to flash")
+        self.logger.step("Sending the offer to flash")
         try:
             self.state = [0, 0]
             self.do(b"OFFR\n\n", b"YACK\n")
@@ -209,20 +208,20 @@ class Flasher:
             self.logger.error("Could not connect to the Network. Trying again... ([ERRNO 101] Network is unreachable)")
             sys.exit(1)
         # Format the board
-        self.logger.info(f"The flash starts on the Device [{info.mac}]")
-        self.logger.debug("Formatting the board")
+        self.logger.info(f"The flash got acknowledged and will be started on the Device [{info.mac}]")
+        self.logger.step("Formatting the board")
         self.do(b"", b"STRT")
         # Spacer to give the board some time to prepare for the file
-        self.logger.debug("Spacer")
+        self.logger.step("Spacer")
         self.do(b"", b"RETR")
         # Send the files
-        self.logger.debug("Files")
+        self.logger.step("Files")
         self.do_files()
         # Tell the board that the installation is done
-        self.logger.debug("Installation Done")
+        self.logger.step("Installation Done")
         self.do(b"FILE\n", b"WTRM")
         # Tell the board that it can now reboot and load the files
-        self.logger.debug("Reboot")
+        self.logger.step("Reboot")
         self.do(b"TERM\nInstallation successful\n")
 
         # Reset the Flasher to default
@@ -251,7 +250,7 @@ class Flasher:
             return True
         else:
             self.logger.debug(f"Waiting for the Response {response}")
-            self.wait()
+            self.wait() 
             res, self.state = self.read()
             # Response includes
             # 1. Destination MAC Address    (6 bytes [:6])
@@ -263,8 +262,9 @@ class Flasher:
                 self.logger.debug(f"Received Response {response}")
                 return True
             else:
-                self.logger.debug(f"Trying the command {data} again")
-                self.do(data, response)
+                pass
+                # self.logger.debug(f"Trying the command {data} again")
+                # self.do(data, response)
 
     def do_file(self, file: io.BufferedReader, max_pos: int, file_name: str) -> None:
         """
@@ -328,8 +328,7 @@ class Flasher:
 
         # Send the .rsc file
         rsc_file, rsc_file_name, rsc_file_size = self.resolve_file_data(rsc)
-        rsc_file_name = "autorun.scr"
-        self.do(bytes(f"FILE\n{rsc_file_name}\n{str(rsc_file_size)}\n", "utf-8"), b"RETR")
+        self.do(bytes(f"FILE\nautorun.scr\n{str(rsc_file_size)}\n", "utf-8"), b"RETR")
         self.logger.debug(f"Send the {rsc_file_name}-File (autorun.scr) to the routerboard")
         self.do_file(rsc_file, rsc_file_size, rsc_file_name)
 
@@ -340,7 +339,7 @@ class Flasher:
         """
         Read some data from the connection to let some time pass
         """
-        self.read()
+        self.read()     
 
     def reset(self) -> None:
         """
@@ -450,29 +449,37 @@ class FlashDevice:
             while True:
                 device = self.connection.get_device_info()
                 # Sleep for some seconds to give the device some time to connect to the Network
-                time.sleep(5)
-                if device is None:
-                    continue
-                if device.mac != self.last_mac:
-                    if self.logger.quiet:
-                        self.logger.debug(f"Device Found: {device.mac}")
-                        self.logger.quiet = False
-                    if not self.process.is_alive():
-                        flash = Flasher(mac=device.mac, logger=self.logger)
-                        self.process = Process(target=flash.run, args=(device,))
-                        self.process.start()
-                        # Wait for the Process to finish
-                        self.process.join()
-                        if self.process.exitcode == 0:
-                            self.last_mac = device.mac
-                            self._already = 0
-                            # Wait for the device to reboot to not get any requests after the reboot
-                            time.sleep(10)
-                else:
-                    if self._already == 0:
-                        self.logger.quiet = True
-                        self.logger.debug("The Device [{device.mac}] is already configured")
-                        self._already = 1
+                time.sleep(7)
+                if device is not None:
+                    if device.mac != self.last_mac:
+                        if self.logger.quiet:
+                            self.logger.quiet = False
+                            self.logger.debug(f"Device Found: {device.mac}")
+                        if self.process is None:
+                            flash = Flasher(mac=device.mac, logger=self.logger)
+                            self.process = Process(target=flash.run, args=(device,))
+                            self.process.start()
+                            # Wait for the Process to finish
+                            self.process.join()
+                            if self.process.is_alive():
+                                self.process.terminate()
+                                self._already = 0
+                            if self.process.exitcode == 0:
+                                self.last_mac = device.mac
+                                self._already = 0
+                                # Wait for the device to reboot to not get any requests after the reboot
+                                time.sleep(10)
+                            if not self.process.is_alive():
+                                self.process = None
+                    else:
+                        # Send the Information that the device was the last device that was configured 
+                        # And Mute all logs until a new Device was found
+                        if self._already == 0:
+                            self.logger.info(f"The Device [{device.mac}] is already configured")
+                            self.logger.debug("Searching for a Device...")
+                            self.logger.quiet = True
+                            self._already = 1
+                device = None
         except KeyboardInterrupt:
             self.connection.close()
             self.logger.info("The Flash got Stopped")

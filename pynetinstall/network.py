@@ -76,7 +76,7 @@ class UDPConnection(socket.socket):
         self.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
         self.bind(addr)
-        self.logger.debug(f"A New UDPConnection is created on ({addr})")
+        self.logger.debug(f"A New UDPConnection is created on {addr}")
         self._get_source_mac()
 
     def _get_source_mac(self) -> None:
@@ -114,7 +114,7 @@ class UDPConnection(socket.socket):
          - bytes: The MAC Address of the Source
         """
         if self._repeat > self.MAX_ERRORS:
-            if state != [1, 0]: 
+            if state != [1, 0] and state != [1, 1]: 
                 self.logger.error(f"The function was called more than {self.MAX_ERRORS} times for the execution of the {state} State")
             self._repeat = 0
             return
@@ -169,7 +169,7 @@ class UDPConnection(socket.socket):
         message = self.mac + self.dev_mac + struct.pack("<HHHH", 0, len(data), state[1], state[0]) + data
         self.sendto(message, recv_addr)
 
-    def get_device_info(self, log: bool = True) -> DeviceInfo:
+    def get_device_info(self) -> DeviceInfo:
         r"""
         This function collects some information about the routerboard
 
@@ -188,12 +188,11 @@ class UDPConnection(socket.socket):
 
          - DeviceInfo: A object with all the information of the Device
         """
-        if log:
-            self.logger.debug("Searching for a Device...")
+        
+        self.logger.debug("Searching for a Device...")
         read_data = self.read([1, 0], mac=True)
         if read_data is None:
-            return
-        else:
-            data, _, self.dev_mac = read_data
-            self.logger.debug(f"Device Found: {self.dev_mac}")
-            return DeviceInfo.from_data(data)
+            return None
+        data, _, self.dev_mac = read_data
+        self.logger.debug(f"Device Found: {self.dev_mac}")
+        return DeviceInfo.from_data(data)
