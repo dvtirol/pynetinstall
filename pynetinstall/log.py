@@ -17,20 +17,20 @@ class Logger:
         self.set_level(level)
 
 
-    def info(self, message: str) -> None:
-        if not self.quiet:
+    def info(self, message: str, force: bool = False) -> None:
+        if not self.quiet or force:
             self.info_logger.info(message)
 
-    def error(self, message: str) -> None:
-        if not self.quiet:
+    def error(self, message: str, force: bool = False) -> None:
+        if not self.quiet or force:
             self.error_logger.error(message)
     
-    def debug(self, message: str) -> None:
-        if not self.quiet:
+    def debug(self, message: str, force: bool = False) -> None:
+        if not self.quiet or force:
             self.debug_logger.debug(message)
 
-    def step(self, message: str) -> None:
-        if not self.quiet:
+    def step(self, message: str, force: bool = False) -> None:
+        if not self.quiet or force:
             self.step_logger.log(15, message)
 
     def set_level(self, level: int) -> None:
