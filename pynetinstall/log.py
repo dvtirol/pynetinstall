@@ -5,6 +5,7 @@ class Logger:
     debug_logger: logging.Logger
     error_logger: logging.Logger
     info_logger: logging.Logger
+    step_logger: logging.Logger
 
     quiet: bool = False
 
@@ -12,6 +13,7 @@ class Logger:
         self.debug_logger = logging.getLogger("pynet-deb")
         self.error_logger = logging.getLogger("pynet-err")
         self.info_logger = logging.getLogger("pynet-inf")
+        self.step_logger = logging.getLogger("pynet-stp")
         self.set_level(level)
 
 
@@ -27,7 +29,12 @@ class Logger:
         if not self.quiet:
             self.debug_logger.debug(message)
 
+    def step(self, message: str) -> None:
+        if not self.quiet:
+            self.step_logger.log(15, message)
+
     def set_level(self, level: int) -> None:
         self.debug_logger.setLevel(level)
         self.error_logger.setLevel(level)
         self.info_logger.setLevel(level)
+        self.step_logger.setLevel(level)
