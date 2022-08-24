@@ -25,7 +25,7 @@ class Flasher:
     During the installation the Raspberry Pi is connected to the board
     over a UDP-socket (`netinstall.network.UDPConnection`)
 
-    
+
     Attributes
     ----------
     conn : UDPConnection
@@ -37,13 +37,15 @@ class Flasher:
     plugin : Plugin
         A Plugin to get the firmware and the configuration file 
         (Must include a .get_files(), has the Configuration as an attribute)
+    logger : Logger
+        Object to log LogRecords
     
     MAX_BYTES : int
         How many bytes the connection can receive at once (default: 1024)
 
     Methods
     -------
-    load_config(config_file="config.ini") -> tuple
+    load_config(config_file="config.ini") -> Plugin
         Loads the Plugin as configured in the `config_file`
 
     write(data) -> None
@@ -52,7 +54,7 @@ class Flasher:
     read(mac=False) -> tuple[bytes, list] or tuple[bytes, list, bytes]
         Read `data` from the Connection
 
-    run() -> None
+    run(info=None) -> None
         The Flashing Process
 
     do(data, response=None) -> None
@@ -67,14 +69,11 @@ class Flasher:
     wait() -> None
         Wait for something
 
-    reset() -> None
-        Reset the Flasher to be able to start a new flash
-
-    Static Methods
-    --------------
-
-    resolve_file_data(data) -> tuple
+    resolve_file_data(data) -> tuple[BufferedReader or parse.ParseResult, str, int]
         Gets information about a file
+
+    Static Method
+    -------------
 
     update_file_bar(curr_pos, max_pos, name, leng=50) -> None
         Updated a Loading bar to display the progress when flashig a file
@@ -84,9 +83,13 @@ class Flasher:
     state: list = [0, 0]
     MAX_BYTES: int = 1024
 
-    def __init__(self, config_file: str = "config.ini", addr: tuple[str, int] = ("0.0.0.0", 5000), interface_name: str = "eth0", mac: bytes = None, logger: Logger = None) -> None:
+    def __init__(self, config_file: str = "config.ini", addr: tuple[str, int] = ("0.0.0.0", 5000), 
+                 interface_name: str = "eth0", mac: bytes = None, logger: Logger = None) -> None:
         """
         Initialization of a new Flasher
+        
+        Loading the Configuration
+        Creating a Connection to the Device
 
         Arguments
         ---------
@@ -96,7 +99,11 @@ class Flasher:
         addr : tuple[str, int]
             The address to bind the Connection to (default: (0.0.0.0, 5000))
         interface_name : str
-            The interface of the Raspberry Pi where the Routerboard is connected to.
+            The interface of the Raspberry Pi where the Routerboard is connected to. (default: eth0)
+        mac : bytes
+            If the Mac Address of the Device is already known (default: None)
+        logger : Logger
+            Object to log LogRecords
         """
         self.logger = logger
         self.logger.debug("Initialization of a new Flasher object")
@@ -130,7 +137,7 @@ class Flasher:
         cparser = ConfigParser()
         if not cparser.read(config_file):
                 self.logger.error(f"The Configuration File ({config_file}) was not found")
-                raise FileNotFoundError("Configuration not found")
+                sys.exit(1)
         try:
             mod, _, cls = cparser["pynetinstall"]["plugin"].partition(":")
             # Import the Plugin using the importlib library
@@ -186,6 +193,7 @@ class Flasher:
         """
         Execute the 6 Steps displayed here:
 
+        (0.  Waits for a new Device if no `info` is given)
          1.  Offer the Configuration to the routerboard
          2.  Formats the routerboard that the new Configuration can be flashed
          3.  Spacer to prepare the Routerboard for the Files
@@ -212,20 +220,18 @@ class Flasher:
         self.logger.step("Formatting the board")
         self.do(b"", b"STRT")
         # Spacer to give the board some time to prepare for the file
-        self.logger.step("Spacer")
+        self.logger.step("Waiting until the Board is ready to receive the file")
         self.do(b"", b"RETR")
         # Send the files
-        self.logger.step("Files")
+        self.logger.step("Sending the Files to the Board")
         self.do_files()
         # Tell the board that the installation is done
         self.logger.step("Installation Done")
         self.do(b"FILE\n", b"WTRM")
         # Tell the board that it can now reboot and load the files
-        self.logger.step("Reboot")
+        self.logger.step("Rebooting the Board")
         self.do(b"TERM\nInstallation successful\n")
 
-        # Reset the Flasher to default
-        self.reset()
         self.logger.info(f"The Device [{info.mac}] is successfully flashed")
         return
 
@@ -261,10 +267,6 @@ class Flasher:
             if response == res[14:]:
                 self.logger.debug(f"Received Response {response}")
                 return True
-            else:
-                pass
-                # self.logger.debug(f"Trying the command {data} again")
-                # self.do(data, response)
 
     def do_file(self, file: io.BufferedReader, max_pos: int, file_name: str) -> None:
         """
@@ -279,7 +281,7 @@ class Flasher:
         max_pos : int
             The lenght of the file to check when the whole file is sent
         file_name : str
-            The name of the file to send
+            The name of the file to send (Would be used if the file_bar would be updated)
         """
         file_pos = 0
         while True:
@@ -339,14 +341,7 @@ class Flasher:
         """
         Read some data from the connection to let some time pass
         """
-        self.read()     
-
-    def reset(self) -> None:
-        """
-        Reset the flasher to start the next flash
-        """
-        self.info = None
-        self.state = [0, 0]
+        self.read()
 
     def resolve_file_data(self, data) -> tuple[BufferedReader or parse.ParseResult, str, int]:
         """
@@ -428,15 +423,55 @@ class Flasher:
         sys.stdout.write(f"\rFlashing {name} - [{inner}] {proz}%")
 
 class FlashDevice:
-    _already: int = 0
+    """
+    Object to run a loop to run multiple flashes after each other
+
+    Attributes
+    ----------
+
+    last_mac : bytes
+        The MAC Address of the Device flashed before (default: DUMMY)
+    process : Process
+        The current running Process (default: None)
+    logger : Logger
+        The Logger to log LogRecords
+    connection : UDPConnection
+        The Connection to wait for new Devices
+
+    _already : bool
+        Indicator if the Device was flashed before
+
+    Methods
+    -------
+
+    flash_once() -> None
+        Execute a flash once
+
+    flash_until_stopped() -> None
+        Run flash until someone stopps the program
+    """
+    _already: int = False
     last_mac: bytes = b"DUMMY"
     process: Process = None
-    def __init__(self, log_level: int = logging.INFO, already: int = 5) -> None:
-        self.MAX_ALREADY: int = already
+    def __init__(self, log_level: int = logging.INFO) -> None:
+        """
+        Initialize a new FlashDevice
+
+        Create a new Logger instance and a new `connection` to wait for new Devices
+
+        Argument
+        --------
+
+        log_level : int
+            What level should be logged by the `logger`
+        """
         self.logger = Logger(log_level)
         self.connection = UDPConnection(logger=self.logger)
 
     def flash_once(self) -> None:
+        """
+        Flash one Device
+        """
         self.logger.info("Flashing one Device the stoping program...")
         device = self.connection.get_device_info()
         flash = Flasher(device.mac, logger=self.logger)
@@ -444,6 +479,9 @@ class FlashDevice:
         self.connection.close()
 
     def flash_until_stopped(self) -> None:
+        """
+        Flash until someone stopps the program
+        """
         self.logger.info("Flashing until someone stops the program...")
         try:
             while True:
@@ -452,6 +490,7 @@ class FlashDevice:
                 time.sleep(7)
                 if device is not None:
                     if device.mac != self.last_mac:
+                        # Enable the logger when the MAC Address changed
                         if self.logger.quiet:
                             self.logger.quiet = False
                             self.logger.debug(f"Device Found: {device.mac}")
@@ -461,25 +500,25 @@ class FlashDevice:
                             self.process.start()
                             # Wait for the Process to finish
                             self.process.join()
-                            if self.process.is_alive():
-                                self.process.terminate()
-                                self._already = 0
+                            # exitcode = 0 -> flash.run() ran without an error
                             if self.process.exitcode == 0:
                                 self.last_mac = device.mac
                                 self._already = 0
                                 # Wait for the device to reboot to not get any requests after the reboot
                                 time.sleep(10)
+                            # Set the `process` to None to be able to start a new one
                             if not self.process.is_alive():
                                 self.process = None
                     else:
                         # Send the Information that the device was the last device that was configured 
                         # And Mute all logs until a new Device was found
-                        if self._already == 0:
+                        if self._already is False:
                             self.logger.info(f"The Device [{device.mac}] is already configured")
                             self.logger.debug("Searching for a Device...")
                             self.logger.quiet = True
-                            self._already = 1
+                            self._already = True
                 device = None
         except KeyboardInterrupt:
-            self.connection.close()
             self.logger.info("The Flash got Stopped")
+        finally:
+            self.connection.close()

@@ -36,7 +36,9 @@ dns-nameservers 10.192.3.2
    * Check if the IP Address is configured using this command
    `ip addr`
    	If the Address `10.192.3.1` is displayed in the eth0 section you are ready to go
+
 ------------
+
 2. **Set up the TFTP-Server**
    * Install [dnsmasq](https://wiki.archlinux.org/title/dnsmasq)\
    `sudo apt install dnsmasq`
@@ -56,7 +58,9 @@ log-facility=/var/log/dnsmasq.log
    * Check if the service is running\
    `sudo systemctl status dnsmasq`\
    If you can see a **RUNNING** the service successfully started
+
 ------------
+
 3. **Set up the DHCP-Server**
    * Install [isc-dhcp-server](https://www.isc.org/dhcp/)\
    `sudo apt install isc-dhcp-server`
@@ -106,16 +110,20 @@ subnet <YOUR SUBNET> netmask <YOUR NETMASK> {
         }
 }
 ```
-   
+
    * Start the service\
    `sudo systemctl start isc-dhcp-server`
    * Check if the service is running\
    `sudo systemctl status isc-dhcp-server`
+
 ------------
+
 4. **Install the python library**
    * Use [pip](https://pypi.org/) to install the Library\
    `pip install pynetinstall`
+
 ------------
+
 5. **Update the ___config.ini___**
 ```
 [pynetinstall]
@@ -123,16 +131,36 @@ firmware=<PATH_TO_ROUTER_OS>
 config=<PATH_TO_CONFIGURATION_FILE>
 plugin=<PATH_TO_PLUGIN>
 ```
+
 ------------
+
 6. **Create a ___mail.py___ file**
 ```python
-from pynetinstall import Flasher
-flasher = Flasher()
-flasher.run()
+from pynetinstall import FlashInterface
+fl_int = FlashInterface()
+fl_int.flash_until_stopped()
 ```
+
 7. **Start the Routerboard using [Etherboot](https://wiki.mikrotik.com/wiki/Manual:Etherboot)**
 When you see the line (in the CLI of the Routerboard):
 `Waiting for installation Server...`
 
 	You can start the main.py
 `python main.py`
+
+
+## Logging
+
+This module implements the Python Standard [logging](https://docs.python.org/3/library/logging.html) module to keep track on errors and other information during the program runtime.
+
+There are 4 different Loggers:
+
+|  Name  |  Qualname  |  Level  |  File  |
+| ------------ | ------------ | ------------ | ------------ |
+|  Debug Logger  |  pynet-deb  |  10  |  *logs/pynetdebug.log*  |
+|  Step Logger  |  pynet-stp  |  15  |  *logs/pynetsteps.log*  |
+|  Info Logger  |  pynet-inf  |  20  |  *logs/pynetinfo.log*  |
+|  Error Logger  |  pynet-err  |  40  |  *logs/pyneterror.log*  |
+
+
+To change what logs should be made you are able to use the **update_level()** function of the Logger. Or you insert an valid Level to the level Argument when initializing a new **FlashInterface**.
