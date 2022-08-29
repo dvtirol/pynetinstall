@@ -3,7 +3,7 @@ import socket
 import struct
 
 from pynetinstall.log import Logger
-from pynetinstall.device import DeviceInfo
+from pynetinstall.interface import InterfaceInfo
 
 
 class UDPConnection(socket.socket):
@@ -12,7 +12,7 @@ class UDPConnection(socket.socket):
 
     This object represents the UDP connection to the Mikrotik Routerboard
 
-    It handles the reading/writing between the devices
+    It handles the reading/writing between the interfaces
 
     Attributes
     ----------
@@ -20,12 +20,12 @@ class UDPConnection(socket.socket):
     mac : bytes
         The MAC Address of the `interface_name` Interface of the Raspberry
     dev_mac : bytes
-        The MAC Address of the Device
+        The MAC Address of the Interface
 
     MAX_ERRORS : int
         How often a Function gets repeated before it raises an error
     MAX_BYTES_RECV : int
-        The amout of bytes to receive at once
+        The amount of bytes to receive at once
 
     _repeat : int
         A Counter how often a Function was repeat
@@ -42,8 +42,8 @@ class UDPConnection(socket.socket):
     write(data, state, recv_addr=("255.255.255.255", 5000)) -> None
         Write `data` to the Connection
 
-    get_device_info() -> tuple
-        Resolve some informations about the Device
+    get_interface_info() -> tuple
+        Resolve some information about the Interface
     """
     mac: bytes
     dev_mac: bytes
@@ -54,19 +54,19 @@ class UDPConnection(socket.socket):
         """
         Initialize a new UDPConnection
 
-        Two otions are set for the socket:
+        Two options are set for the socket:
          - SO_REUSEADDR: To use the Address more than one time
          - SO_BROADCAST: To send Broadcast Messages
 
-        Agruments
+        Arguments
         ---------
 
         addr : tuple
             The Address Pair on which the socket will be binded (default: ("0.0.0.0", 5000))
         interface_name : str
-            The name of the Interface where the Device is connected to (default: "eth0")
+            The name of the Interface where the Interface is connected to (default: "eth0")
         error_repeat : int
-            How often a function is repeaten until it gets the right response or it raises an error (default: 5)
+            How often a function is repeated until it gets the right response or it raises an error (default: 5)
         """
         super().__init__(family, kind, *args, **kwargs)
         self._interface_name = interface_name
@@ -98,16 +98,16 @@ class UDPConnection(socket.socket):
         ---------
 
         state : tuple
-            The State of the Flash Process [Server State, Device State]
+            The State of the Flash Process [Server State, Interface State]
         check_mac : bytes
-            The MAC Address of the Device to check if the packet was sent by the Device (default: None)
+            The MAC Address of the Interface to check if the packet was sent by the Interface (default: None)
         mac : bool
             If the function should return the MAC Address of the Source (default: False)
 
         Returns
         -------
         
-         - bytes: The data received from the Device
+         - bytes: The data received from the Interface
          - list: The State displayed in the Header of the UDPPacket
 
         Optional (When `mac` is True)
@@ -139,22 +139,22 @@ class UDPConnection(socket.socket):
                     if mac is True:
                         return data, header_state, header_mac
                     return data[6:], header_state
-        # Count up the _repeat Attribute to make sure the programm does not get in a loop
+        # Count up the _repeat Attribute to make sure the program does not get in a loop
         self._repeat += 1
         # Restart the Function
         return self.read(state, check_mac, mac)
 
     def write(self, data: bytes, state: list, recv_addr: tuple = ("255.255.255.255", 5000)) -> None:
         """
-        Write a Broadcast message to all the connected devices including the data.
+        Write a Broadcast message to all the connected interfaces including the data.
 
         Arguments
         ---------
 
         data : bytes
-            The `data` to send to the Device
+            The `data` to send to the Interface
         state : list
-            A list of the current State of the Flash [Server State, Device State]
+            A list of the current State of the Flash [Server State, Interface State]
         recv_addr : tuple
             A Address pair to where the Connection sends the data to (default: ("255.255.255.255, 5000))
         """
@@ -169,30 +169,30 @@ class UDPConnection(socket.socket):
         message = self.mac + self.dev_mac + struct.pack("<HHHH", 0, len(data), state[1], state[0]) + data
         self.sendto(message, recv_addr)
 
-    def get_device_info(self) -> DeviceInfo:
+    def get_interface_info(self) -> InterfaceInfo:
         r"""
-        This function collects some information about the routerboard
+        This function collects some information about the Routerboard
 
         Important Information:
-         - Model (What type of routerboard it is)
-         - Architecture (The Architecture of the routerboard)
-         - min OS (The lowest OS you can install on the routerboard)
+         - Model (What type of Routerboard it is)
+         - Architecture (The Architecture of the Routerboard)
+         - min OS (The lowest OS you can install on the Routerboard)
 
         Other Information:
-         - MAC Address (The MAC Address of the Device)
-         - Licence ID (The ID of the Licence)
-         - Licence Key (The Key of the Licence)
+         - MAC Address (The MAC Address of the Interface)
+         - License ID (The ID of the License)
+         - License Key (The Key of the License)
 
         Returns
         -------
 
-         - DeviceInfo: A object with all the information of the Device
+         - InterfaceInfo: A object with all the information of the Interface
         """
         
-        self.logger.debug("Searching for a Device...")
+        self.logger.debug("Searching for a Interface...")
         read_data = self.read([1, 0], mac=True)
         if read_data is None:
             return None
         data, _, self.dev_mac = read_data
-        self.logger.debug(f"Device Found: {self.dev_mac}")
-        return DeviceInfo.from_data(data)
+        self.logger.debug(f"Interface Found: {self.dev_mac}")
+        return InterfaceInfo.from_data(data)

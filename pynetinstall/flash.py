@@ -5,33 +5,34 @@ import time
 import importlib
 
 from io import BufferedReader
-from urllib import request, parse
+from urllib import request
 from multiprocessing import Process
+from http.client import HTTPResponse
 from os.path import getsize, basename
 from configparser import ConfigParser
 
 from pynetinstall.log import Logger
-from pynetinstall.device import DeviceInfo
+from pynetinstall.interface import InterfaceInfo
 from pynetinstall.network import UDPConnection
 from pynetinstall.plugins.simple import Plugin
 
 
 class Flasher:
     """
-    Object to flash configurations on a Mikrotik routerboard
+    Object to flash configurations on a Mikrotik Routerboard
 
     To run the flash simply use the .run() function.
 
     During the installation the Raspberry Pi is connected to the board
-    over a UDP-socket (`netinstall.network.UDPConnection`)
+    over a UDP-socket (`pynetinstall.network.UDPConnection`)
 
 
     Attributes
     ----------
     conn : UDPConnection
         A Socket Connection to send UDP Packets
-    info : DeviceInfo
-        Information about the Device
+    info : InterfaceInfo
+        Information about the Interface
     state : list
         The current state of the flash (default: [0, 0])
     plugin : Plugin
@@ -76,10 +77,10 @@ class Flasher:
     -------------
 
     update_file_bar(curr_pos, max_pos, name, leng=50) -> None
-        Updated a Loading bar to display the progress when flashig a file
+        Updated a Loading bar to display the progress when flashing a file
     """
 
-    info: DeviceInfo
+    info: InterfaceInfo
     state: list = [0, 0]
     MAX_BYTES: int = 1024
 
@@ -89,7 +90,7 @@ class Flasher:
         Initialization of a new Flasher
         
         Loading the Configuration
-        Creating a Connection to the Device
+        Creating a Connection to the Interface
 
         Arguments
         ---------
@@ -101,7 +102,7 @@ class Flasher:
         interface_name : str
             The interface of the Raspberry Pi where the Routerboard is connected to. (default: eth0)
         mac : bytes
-            If the Mac Address of the Device is already known (default: None)
+            If the Mac Address of the Interface is already known (default: None)
         logger : Logger
             Object to log LogRecords
         """
@@ -173,29 +174,29 @@ class Flasher:
         ---------
         
         mac : bool
-            If you want to reveive the MAC Address of the device who sent what u read
+            If you want to receive the MAC Address of the interface who sent what u read
         get_state : bool
             If you want to check if the states are matching or not
 
         Returns
         -------
 
-         - bytes: The Data received (Without the first 6 bytes where the Device MAC is displayed)
-         - list: The Position the Device returned
+         - bytes: The Data received (Without the first 6 bytes where the Interface MAC is displayed)
+         - list: The Position the Interface returned
 
         Optional (when mac is True)
-         - bytes: The Mac address of the Device
+         - bytes: The Mac address of the Interface
         """
         data = self.conn.read(self.state, self.info.mac, mac)
         return data
 
-    def run(self, info: DeviceInfo = None) -> None:
+    def run(self, info: InterfaceInfo = None) -> None:
         """
         Execute the 6 Steps displayed here:
 
-        (0.  Waits for a new Device if no `info` is given)
-         1.  Offer the Configuration to the routerboard
-         2.  Formats the routerboard that the new Configuration can be flashed
+        (0.  Waits for a new Interface if no `info` is given)
+         1.  Offer the Configuration to the Routerboard
+         2.  Formats the Routerboard that the new Configuration can be flashed
          3.  Spacer to prepare the Routerboard for the Files
          4.1 Sends the .npk file
          4.2 Sends the .rsc file
@@ -203,7 +204,7 @@ class Flasher:
          6.  Restarts the board
         """
         if info is None:
-            self.info = self.conn.get_device_info()
+            self.info = self.conn.get_interface_info()
         else:
             self.info = info
         # Offer the flash
@@ -216,7 +217,7 @@ class Flasher:
             self.logger.error("Could not connect to the Network. Trying again... ([ERRNO 101] Network is unreachable)")
             sys.exit(1)
         # Format the board
-        self.logger.info(f"The flash got acknowledged and will be started on the Device [{info.mac}]")
+        self.logger.info(f"The flash got acknowledged and will be started on the Interface [{info.mac}]")
         self.logger.step("Formatting the board")
         self.do(b"", b"STRT")
         # Spacer to give the board some time to prepare for the file
@@ -232,7 +233,7 @@ class Flasher:
         self.logger.step("Rebooting the Board")
         self.do(b"TERM\nInstallation successful\n")
 
-        self.logger.info(f"The Device [{info.mac}] is successfully flashed")
+        self.logger.info(f"The Interface [{info.mac}] is successfully flashed")
         return
 
     def do(self, data: bytes, response: bytes = None) -> None:
@@ -243,9 +244,9 @@ class Flasher:
         ---------
 
         data : bytes
-            The Data to send to the Device
+            The Data to send to the Interface
         response : bytes
-            What to expect as a Response from the Device (default: None)
+            What to expect as a Response from the Interface (default: None)
         """
         self.logger.debug(f"Executing the {data} command")
         self.state[1] += 1
@@ -270,16 +271,16 @@ class Flasher:
 
     def do_file(self, file: io.BufferedReader, max_pos: int, file_name: str) -> None:
         """
-        Send one file to the Device.
+        Send one file to the Interface.
         It sends multiple smaller Packets because of the `MAX_BYTES`
 
         Arguments
         ---------
 
         file : BufferedReader
-            A File object to send to the Device
+            A File object to send to the Interface
         max_pos : int
-            The lenght of the file to check when the whole file is sent
+            The length of the file to check when the whole file is sent
         file_name : str
             The name of the file to send (Would be used if the file_bar would be updated)
         """
@@ -289,7 +290,7 @@ class Flasher:
             data = file.read(self.MAX_BYTES)
             self.write(data)
             self.state[0] += 1
-            # Waiting for a response from device to check that the device received the Data
+            # Waiting for a response from interface to check that the interface received the Data
             self.wait()
 
             file_pos += len(data)
@@ -322,7 +323,7 @@ class Flasher:
         # Send the .npk file
         npk_file, npk_file_name, npk_file_size = self.resolve_file_data(npk)
         self.do(bytes(f"FILE\n{npk_file_name}\n{str(npk_file_size)}\n", "utf-8"), b"RETR")
-        self.logger.debug(f"Send the {npk_file_name}-File to the routerboard")
+        self.logger.debug(f"Send the {npk_file_name}-File to the Routerboard")
         self.do_file(npk_file, npk_file_size, npk_file_name)
 
         self.do(b"", b"RETR")
@@ -331,7 +332,7 @@ class Flasher:
         # Send the .rsc file
         rsc_file, rsc_file_name, rsc_file_size = self.resolve_file_data(rsc)
         self.do(bytes(f"FILE\nautorun.scr\n{str(rsc_file_size)}\n", "utf-8"), b"RETR")
-        self.logger.debug(f"Send the {rsc_file_name}-File (autorun.scr) to the routerboard")
+        self.logger.debug(f"Send the {rsc_file_name}-File (autorun.scr) to the Routerboard")
         self.do_file(rsc_file, rsc_file_size, rsc_file_name)
 
         self.do(b"", b"RETR")
@@ -343,7 +344,7 @@ class Flasher:
         """
         self.read()
 
-    def resolve_file_data(self, data) -> tuple[BufferedReader or parse.ParseResult, str, int]:
+    def resolve_file_data(self, data) -> tuple[BufferedReader or HTTPResponse, str, int]:
         """
         This function resolves some data from a file
 
@@ -356,7 +357,7 @@ class Flasher:
         Returns
         -------
 
-         - BufferedReader or ParseResult: object with a .read() function 
+         - BufferedReader or HTTPResponse: object with a .read() function 
          - str: The name of the file
          - int: The size of the file
 
@@ -376,11 +377,11 @@ class Flasher:
         else:
             # data is a url to a file
             try:
-                # Not tested yet
-                par = parse.urlparse(data)
-                size = getsize(par)
-                name = basename(par)
+                # Working
                 file = request.urlopen(data)
+                size = int(file.getheader("Content-Length"))
+                name = file.getheader("Content-Disposition")
+                name = name.split("=")[1]
                 self.logger.debug("Resolved File-Data from the URL")
             except:
                 # data is a filename/path
@@ -398,7 +399,7 @@ class Flasher:
     @staticmethod
     def update_file_bar(curr_pos: int, max_pos: int, name: str, leng: int = 50):
         """
-        Updates a Loading Bar when no print statements get executed duning updating
+        Updates a Loading Bar when no print statements get executed during updating
 
         Calculates how many percent are already processed and displays that.
 
@@ -422,7 +423,7 @@ class Flasher:
         inner = "".join([">" for i in range(done)] + [" " for i in range(leng-done)])
         sys.stdout.write(f"\rFlashing {name} - [{inner}] {proz}%")
 
-class FlashDevice:
+class FlashInterface:
     """
     Object to run a loop to run multiple flashes after each other
 
@@ -430,16 +431,16 @@ class FlashDevice:
     ----------
 
     last_mac : bytes
-        The MAC Address of the Device flashed before (default: DUMMY)
+        The MAC Address of the Interface flashed before (default: DUMMY)
     process : Process
         The current running Process (default: None)
     logger : Logger
         The Logger to log LogRecords
     connection : UDPConnection
-        The Connection to wait for new Devices
+        The Connection to wait for new Interfaces
 
     _already : bool
-        Indicator if the Device was flashed before
+        Indicator if the Interface was flashed before
 
     Methods
     -------
@@ -448,16 +449,16 @@ class FlashDevice:
         Execute a flash once
 
     flash_until_stopped() -> None
-        Run flash until someone stopps the program
+        Run flash until someone stops the program
     """
     _already: int = False
     last_mac: bytes = b"DUMMY"
     process: Process = None
     def __init__(self, log_level: int = logging.INFO) -> None:
         """
-        Initialize a new FlashDevice
+        Initialize a new FlashInterface
 
-        Create a new Logger instance and a new `connection` to wait for new Devices
+        Create a new Logger instance and a new `connection` to wait for new Interfaces
 
         Argument
         --------
@@ -470,54 +471,54 @@ class FlashDevice:
 
     def flash_once(self) -> None:
         """
-        Flash one Device
+        Flash one Interface
         """
-        self.logger.info("Flashing one Device the stoping program...")
-        device = self.connection.get_device_info()
-        flash = Flasher(device.mac, logger=self.logger)
-        flash.run(device)
+        self.logger.info("Flashing one Interface the stopping program...")
+        interface = self.connection.get_interface_info()
+        flash = Flasher(interface.mac, logger=self.logger)
+        flash.run(interface)
         self.connection.close()
 
     def flash_until_stopped(self) -> None:
         """
-        Flash until someone stopps the program
+        Flash until someone stops the program
         """
         self.logger.info("Flashing until someone stops the program...")
         try:
             while True:
-                device = self.connection.get_device_info()
-                # Sleep for some seconds to give the device some time to connect to the Network
+                interface = self.connection.get_interface_info()
+                # Sleep for some seconds to give the interface some time to connect to the Network
                 time.sleep(7)
-                if device is not None:
-                    if device.mac != self.last_mac:
+                if interface is not None:
+                    if interface.mac != self.last_mac:
                         # Enable the logger when the MAC Address changed
                         if self.logger.quiet:
                             self.logger.quiet = False
-                            self.logger.debug(f"Device Found: {device.mac}")
+                            self.logger.debug(f"Interface Found: {interface.mac}")
                         if self.process is None:
-                            flash = Flasher(mac=device.mac, logger=self.logger)
-                            self.process = Process(target=flash.run, args=(device,))
+                            flash = Flasher(mac=interface.mac, logger=self.logger)
+                            self.process = Process(target=flash.run, args=(interface,))
                             self.process.start()
                             # Wait for the Process to finish
                             self.process.join()
                             # exitcode = 0 -> flash.run() ran without an error
                             if self.process.exitcode == 0:
-                                self.last_mac = device.mac
+                                self.last_mac = interface.mac
                                 self._already = 0
-                                # Wait for the device to reboot to not get any requests after the reboot
+                                # Wait for the interface to reboot to not get any requests after the reboot
                                 time.sleep(10)
                             # Set the `process` to None to be able to start a new one
                             if not self.process.is_alive():
                                 self.process = None
                     else:
-                        # Send the Information that the device was the last device that was configured 
-                        # And Mute all logs until a new Device was found
+                        # Send the Information that the interface was the last interface that was configured 
+                        # And Mute all logs until a new Interface was found
                         if self._already is False:
-                            self.logger.info(f"The Device [{device.mac}] is already configured")
-                            self.logger.debug("Searching for a Device...")
+                            self.logger.info(f"The Interface [{interface.mac}] is already configured")
+                            self.logger.debug("Searching for a Interface...")
                             self.logger.quiet = True
                             self._already = True
-                device = None
+                interface = None
         except KeyboardInterrupt:
             self.logger.info("The Flash got Stopped")
         finally:
