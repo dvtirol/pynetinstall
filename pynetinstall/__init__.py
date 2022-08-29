@@ -7,6 +7,6 @@ logging.addLevelName(15, "STEP")
 logging.config.fileConfig("pynetinstall/logging.ini")
 
 
-__all__ = ["FlashDevice"]
+__all__ = ["FlashInterface", "Flasher"]
 
-from .flash import FlashDevice
+from .flash import FlashInterface, Flasher
