@@ -375,8 +375,12 @@ class Flasher:
                 # Working
                 file = request.urlopen(data)
                 size = int(file.getheader("Content-Length"))
-                name = file.getheader("Content-Disposition")
-                name = name.split("=")[1]
+                try: # use server provided file name if available
+                    name = file.getheader("Content-Disposition")
+                    name = name.split("=")[1]
+                except: # extract basename from URL
+                    _, _, name = data.rpartition('/')
+                    name, _, _ = name.partition('?')
                 self.logger.debug("Resolved File-Data from the URL")
             except:
                 # data is a filename/path
