@@ -42,7 +42,7 @@ class UDPConnection(socket.socket):
     """
     mac: bytes
 
-    def __init__(self, addr: tuple = ("0.0.0.0", 5000), interface_name: str = "eth0", error_repeat: int = 5, logger: Logger = None,
+    def __init__(self, addr: tuple = ("0.0.0.0", 5000), interface_name: str = "eth0", error_repeat: int = 25, logger: Logger = None,
                  family: socket.AddressFamily or int = socket.AF_INET, kind: socket.SocketKind or int = socket.SOCK_DGRAM, *args, **kwargs) -> None:
         """
         Initialize a new UDPConnection
@@ -59,7 +59,7 @@ class UDPConnection(socket.socket):
         interface_name : str
             The name of the Interface where the Interface is connected to (default: "eth0")
         error_repeat : int
-            How often a function is repeated until it gets the right response or it raises an error (default: 5)
+            How often a function is repeated until it gets the right response or it raises an error (default: 25)
         """
         super().__init__(family, kind, *args, **kwargs)
         self._interface_name = interface_name
@@ -80,12 +80,12 @@ class UDPConnection(socket.socket):
         self.mac = fcntl.ioctl(self.fileno(), 0x8927, arg)[18:24]
         self.logger.debug(f"The MAC-Address of the Interface {self._interface_name} is {self.mac}")
 
-    def read(self, state: list) -> tuple:
+    def read(self, state: list, _repeated = 0) -> tuple[bytes, list] or None:
         """
         Reads `MAX_BYTES_RECV` (int) from the socket and returns the bytes.
 
         This function also checks if the message was sent by the Raspberry Server
-        and restarts the function if this happens (As long as `_repeat` is smaller than `MAX_ERRORS`).
+        and restarts the function if this happens (As long as `_repeated` is smaller than `MAX_ERRORS`).
 
         Arguments
         ---------
@@ -96,32 +96,29 @@ class UDPConnection(socket.socket):
         Returns
         -------
         
-         - bytes: The data received from the Interface
-         - list: The State displayed in the Header of the UDPPacket
-
-        Optional (When `mac` is True)
-         - bytes: The MAC Address of the Source
+         - bytes: The data received from the Interface, or None on error
+         - list: The State displayed in the Header of the UDPPacket, or None on error
         """
-        if self._repeat > self.MAX_ERRORS:
-            if state != [1, 0] and state != [1, 1]: 
-                self.logger.error(f"The function was called more than {self.MAX_ERRORS} times for the execution of the {state} State")
-            self._repeat = 0
-            return
+
         data, addr = self.recvfrom(self.MAX_BYTES_RECV)
         header_state = []
-        # if addr[0] == "127.0.0.1": # Swap this lines with the line below when testing
-        if addr[0] == "0.0.0.0":
+
+        # since we listen for broadcasts, we also receive any packets we sent ourselves, so we have to filter out packets with our ip in src
+        if addr[0] == "0.0.0.0": # Routerboard sets this as srcip
             # The fist 6 bytes are the MAC Address of the source 
             header_mac: bytes = data[:6]
             # From bytes 16 to 20 the states are displayed
             header_state: list[int] = [*struct.unpack("<HH", data[16:20])]
-            if header_state == state:
-                self._repeat = 0
+            if header_state == state: # state not updated (happens during OFFR and FILE commands) means the device is not yet ready to continue
                 return data[6:], header_state
-        # Count up the _repeat Attribute to make sure the program does not get in a loop
-        self._repeat += 1
-        # Restart the Function
-        return self.read(state, check_mac, mac)
+
+        # otherwise, likely received an unrelated packet (wrong srcip or state)
+        _repeated += 1
+        if _repeated > self.MAX_ERRORS:
+            self.logger.debug(f"State is {header_state}, but should be {state} (tried {_repeated} times), aborting.")
+            return None, None
+
+        return self.read(state, _repeated)
 
     def write(self, data: bytes, state: list, dev_mac: bytes, recv_addr: tuple = ("255.255.255.255", 5000)) -> None:
         """
