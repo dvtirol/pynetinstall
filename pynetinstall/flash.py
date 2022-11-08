@@ -16,6 +16,16 @@ from pynetinstall.network import UDPConnection
 from pynetinstall.plugins.simple import Plugin
 
 
+class AbortFlashing(Exception):
+    """ Abort the currently running flashing process. """
+    pass
+
+
+class FatalError(Exception):
+    """ Indicates a configuration error. """
+    pass
+
+
 class Flasher:
     """
     Object to flash configurations on a Mikrotik Routerboard
@@ -130,17 +140,15 @@ class Flasher:
         
         cparser = ConfigParser()
         if not cparser.read(config_file):
-                self.logger.error(f"The Configuration File ({config_file}) was not found")
-                sys.exit(1)
+            raise FatalError("Configuration File ({config_file}) not found")
         try:
             mod, _, cls = cparser["pynetinstall"]["plugin"].partition(":")
             # Import the Plugin using the importlib library
             plug = getattr(importlib.import_module(mod, __name__), cls)
             self.logger.debug(f"The Plugin ({plug}) is successfully imported")
             return plug(config=cparser)
-        except:
-            self.logger.debug(f"The Default Plugin is successfully imported")
-            return Plugin(config=cparser)
+        except Exception as e:
+            raise FatalError(f"Could not load Plugin {plug}: {e}")
 
     def write(self, data: bytes) -> None:
         """
@@ -192,11 +200,10 @@ class Flasher:
             self.state = [0, 0]
             self.do(b"OFFR\n\n", b"YACK\n")
         # Errno 101 Network is unreachable
-        except OSError:
-            self.logger.error("Could not connect to the Network. Trying again... ([ERRNO 101] Network is unreachable)")
-            sys.exit(1)
+        except OSError as e:
+            raise AbortFlashing(f"Network error: {e}")
         # Format the board
-        self.logger.info(f"The flash got acknowledged and will be started on the Interface [{info.mac}]")
+        self.logger.info(f"Device accepted flash offer on interface {info.mac.hex(':')}")
         self.logger.step("Formatting the board")
         self.do(b"", b"STRT")
         # Spacer to give the board some time to prepare for the file
@@ -212,7 +219,7 @@ class Flasher:
         self.logger.step("Rebooting the Board")
         self.do(b"TERM\nInstallation successful\n")
 
-        self.logger.info(f"The Interface [{info.mac.hex(':')}] is successfully flashed")
+        self.logger.info(f"The Interface {info.mac.hex(':')} was successfully flashed")
         return
 
     def do(self, data: bytes, response: bytes = None) -> None:
@@ -237,7 +244,10 @@ class Flasher:
         else:
             self.logger.debug(f"Waiting for the Response {response}")
             self.wait() 
-            res, self.state = self.read()
+            res, new_state = self.read()
+            if res is None:
+                raise AbortFlashing(f"Did not receive response to {data} (state {self.state})")
+            self.state = new_state
             # Response includes
             # 1. Destination MAC Address    (6 bytes [:6])
             # 2. A `0` as a Short           (2 bytes [6:8])
@@ -275,7 +285,10 @@ class Flasher:
             file_pos += len(data)
             # self.update_file_bar(file_pos, max_pos, file_name)
             if file_pos >= max_pos:
-                res, self.state = self.read()
+                res, new_state = self.read()
+                if res is None:
+                    raise AbortFlashing(f"Did not receive response to file upload (state {self.state})")
+                self.state = new_state
                 # Response includes
                 # 1. Destination MAC Address    (6 bytes [:6])
                 # 2. A `0` as a Short           (2 bytes [6:8])
@@ -289,7 +302,7 @@ class Flasher:
                 else:
                     raise Exception("File was not received properly")
             else:
-                # main reason why the flash is so slow but without this sleep state errors occur
+                # main reason why flashing is so slow but without this sleep state errors occur
                 time.sleep(0.005)
         
     def do_files(self) -> None:
@@ -298,6 +311,8 @@ class Flasher:
         It requests both files from the get_files() Function of the Plugin
         """
         npk, rsc = self.plugin.get_files(self.info)
+        if npk is None:
+            raise AbortFlashing("Plugin did not return RouterOS location") # TODO: FatalError?
 
         # Send the .npk file
         npk_file, npk_file_name, npk_file_size = self.resolve_file_data(npk)
@@ -308,11 +323,12 @@ class Flasher:
         self.do(b"", b"RETR")
         self.logger.debug("Done with the Firmware")
 
-        # Send the .rsc file
-        rsc_file, rsc_file_name, rsc_file_size = self.resolve_file_data(rsc)
-        self.do(bytes(f"FILE\nautorun.scr\n{str(rsc_file_size)}\n", "utf-8"), b"RETR")
-        self.logger.debug(f"Send the {rsc_file_name}-File (autorun.scr) to the Routerboard")
-        self.do_file(rsc_file, rsc_file_size, rsc_file_name)
+        # Send the initial config file. routerOS expects filename to be autorun.scr.
+        if rsc:
+            rsc_file, rsc_file_name, rsc_file_size = self.resolve_file_data(rsc)
+            self.do(bytes(f"FILE\nautorun.scr\n{str(rsc_file_size)}\n", "utf-8"), b"RETR")
+            self.logger.debug(f"Send the {rsc_file_name}-File (autorun.scr) to the Routerboard")
+            self.do_file(rsc_file, rsc_file_size, rsc_file_name)
 
         self.do(b"", b"RETR")
         self.logger.debug("Done with the Configuration File")
@@ -371,8 +387,7 @@ class Flasher:
                     file = open(data, "rb")
                     self.logger.debug("Resolved File-Data from the Path/Filename")
                 except:
-                    self.logger.error(f"Unable to get information to the file/url/BufferedReader ({data})")
-                    sys.exit(2)
+                    raise AbortFlashing(f"Unable to read file/url/BufferedReader ({data})") # TODO: FatalError?
         return file, name, size
 
     @staticmethod
@@ -453,16 +468,22 @@ class FlashInterface:
         """
         try:
             while True:
-                interface = self.connection.get_interface_info()
-                if interface:
+                try:
+                    interface = self.connection.get_interface_info()
+                    if interface:
+                        self.logger.info(f"Device found! mac={interface.mac}, model={interface.model}, arch={interface.arch}")
                         # Sleep for some seconds to give the interface some time to connect to the Network
                         time.sleep(7)
                         flash = Flasher(self.connection, logger=self.logger)
                         flash.run(interface)
-                # Wait for the interface to reboot to not get any requests after the reboot
-                time.sleep(10)
-                interface = None
-        except KeyboardInterrupt:
-            self.logger.info("The Flash got Stopped")
+                    # Wait for the interface to reboot to not get any requests after the reboot
+                    time.sleep(10)
+                    interface = None
+                except AbortFlashing as e:
+                    self.logger.error("Flashing failed: {e}")
+                    continue
+        except FatalError as e:
+            self.logger.error("Unable to start Flasher: {e}")
+            return
         finally:
             self.connection.close()
