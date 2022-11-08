@@ -19,16 +19,11 @@ class UDPConnection(socket.socket):
 
     mac : bytes
         The MAC Address of the `interface_name` Interface of the Raspberry
-    dev_mac : bytes
-        The MAC Address of the Interface
 
     MAX_ERRORS : int
         How often a Function gets repeated before it raises an error
     MAX_BYTES_RECV : int
         The amount of bytes to receive at once
-
-    _repeat : int
-        A Counter how often a Function was repeat
 
     Methods
     -------
@@ -36,7 +31,7 @@ class UDPConnection(socket.socket):
     _get_source_mac() -> None
         Get the `mac` Address of the Raspberry
     
-    read(state, check_mac=None, mac=False) -> tuple
+    read(state) -> tuple
         Read data from the Connection
 
     write(data, state, recv_addr=("255.255.255.255", 5000)) -> None
@@ -46,8 +41,6 @@ class UDPConnection(socket.socket):
         Resolve some information about the Interface
     """
     mac: bytes
-    dev_mac: bytes
-    _repeat: int = 0
 
     def __init__(self, addr: tuple = ("0.0.0.0", 5000), interface_name: str = "eth0", error_repeat: int = 5, logger: Logger = None,
                  family: socket.AddressFamily or int = socket.AF_INET, kind: socket.SocketKind or int = socket.SOCK_DGRAM, *args, **kwargs) -> None:
@@ -87,7 +80,7 @@ class UDPConnection(socket.socket):
         self.mac = fcntl.ioctl(self.fileno(), 0x8927, arg)[18:24]
         self.logger.debug(f"The MAC-Address of the Interface {self._interface_name} is {self.mac}")
 
-    def read(self, state: list, check_mac: bytes = None, mac: bool = False) -> tuple:
+    def read(self, state: list) -> tuple:
         """
         Reads `MAX_BYTES_RECV` (int) from the socket and returns the bytes.
 
@@ -99,10 +92,6 @@ class UDPConnection(socket.socket):
 
         state : tuple
             The State of the Flash Process [Server State, Interface State]
-        check_mac : bytes
-            The MAC Address of the Interface to check if the packet was sent by the Interface (default: None)
-        mac : bool
-            If the function should return the MAC Address of the Source (default: False)
 
         Returns
         -------
@@ -126,25 +115,15 @@ class UDPConnection(socket.socket):
             header_mac: bytes = data[:6]
             # From bytes 16 to 20 the states are displayed
             header_state: list[int] = [*struct.unpack("<HH", data[16:20])]
-            if check_mac:
-                if check_mac == header_mac:
-                    if header_state == state:
-                        self._repeat = 0
-                        if mac is True:
-                            return data, header_state, header_mac
-                        return data[6:], header_state
-            else:
-                if header_state == state:
-                    self._repeat = 0
-                    if mac is True:
-                        return data, header_state, header_mac
-                    return data[6:], header_state
+            if header_state == state:
+                self._repeat = 0
+                return data[6:], header_state
         # Count up the _repeat Attribute to make sure the program does not get in a loop
         self._repeat += 1
         # Restart the Function
         return self.read(state, check_mac, mac)
 
-    def write(self, data: bytes, state: list, recv_addr: tuple = ("255.255.255.255", 5000)) -> None:
+    def write(self, data: bytes, state: list, dev_mac: bytes, recv_addr: tuple = ("255.255.255.255", 5000)) -> None:
         """
         Write a Broadcast message to all the connected interfaces including the data.
 
@@ -155,6 +134,8 @@ class UDPConnection(socket.socket):
             The `data` to send to the Interface
         state : list
             A list of the current State of the Flash [Server State, Interface State]
+        dev_mac : bytes
+            The MAC Address of the Interface
         recv_addr : tuple
             A Address pair to where the Connection sends the data to (default: ("255.255.255.255, 5000))
         """
@@ -166,7 +147,7 @@ class UDPConnection(socket.socket):
         # 5. The State of the Server                (2 bytes)
         # 6. The State of the Client                (2 bytes)
         # 7. The data                               (? bytes)
-        message = self.mac + self.dev_mac + struct.pack("<HHHH", 0, len(data), state[1], state[0]) + data
+        message = self.mac + dev_mac + struct.pack("<HHHH", 0, len(data), state[1], state[0]) + data
         self.sendto(message, recv_addr)
 
     def get_interface_info(self) -> InterfaceInfo:
@@ -190,9 +171,13 @@ class UDPConnection(socket.socket):
         """
         
         self.logger.debug("Searching for a Interface...")
-        read_data = self.read([1, 0], mac=True)
-        if read_data is None:
-            return None
-        data, _, self.dev_mac = read_data
-        self.logger.debug(f"Interface Found: {self.dev_mac}")
-        return InterfaceInfo.from_data(data)
+        data, addr = self.recvfrom(self.MAX_BYTES_RECV)
+
+        if addr[0] == "0.0.0.0": # see self.read() for details.
+            header_state = [*struct.unpack("<HH", data[16:20])]
+            if header_state == [1, 0]:
+                mac  = data[:6].hex(':').upper()
+                self.logger.debug(f"Interface Found: {mac}")
+                return InterfaceInfo.from_data(data)
+
+        return None

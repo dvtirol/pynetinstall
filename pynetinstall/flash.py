@@ -83,8 +83,8 @@ class Flasher:
     state: list = [0, 0]
     MAX_BYTES: int = 1024
 
-    def __init__(self, config_file: str = "config.ini", addr: tuple[str, int] = ("0.0.0.0", 5000), 
-                 interface_name: str = "eth0", mac: bytes = None, logger: Logger = None) -> None:
+    def __init__(self, connection: UDPConnection, config_file: str = "config.ini",
+                 logger: Logger = None) -> None:
         """
         Initialization of a new Flasher
         
@@ -94,23 +94,17 @@ class Flasher:
         Arguments
         ---------
 
+        connection : UDPConnection
+            The Connection object to reuse from flash_once or flash_until_stopped.
         config_file : str
             The location of the configuration file (default: config.ini)
-        addr : tuple[str, int]
-            The address to bind the Connection to (default: (0.0.0.0, 5000))
-        interface_name : str
-            The interface of the Raspberry Pi where the Routerboard is connected to. (default: eth0)
-        mac : bytes
-            If the Mac Address of the Interface is already known (default: None)
         logger : Logger
             Object to log LogRecords
         """
         self.logger = logger
         self.logger.debug("Initialization of a new Flasher object")
         self.plugin = self.load_config(config_file)
-        self.conn = UDPConnection(addr, interface_name, logger=logger)
-        if mac is not None:
-            self.conn.dev_mac = mac
+        self.conn = connection
 
     def load_config(self, config_file: str = "config.ini") -> Plugin:
         """
@@ -160,36 +154,25 @@ class Flasher:
         data : bytes
             The data you want to write to the connection as bytes
         """
-        self.conn.write(data, self.state)
+        self.conn.write(data, self.state, self.info.mac)
 
-    def read(self, mac: bool = False) -> tuple[bytes, list] or tuple[bytes, list, bytes]:
+    def read(self) -> tuple[bytes, list]:
         """
         Read `data` from the UDPConnection
         
         This function is used to pass the value of `state` and `dev_mac` 
         to the read function of the connection.
 
-        Arguments
-        ---------
-        
-        mac : bool
-            If you want to receive the MAC Address of the interface who sent what u read
-        get_state : bool
-            If you want to check if the states are matching or not
-
         Returns
         -------
 
          - bytes: The Data received (Without the first 6 bytes where the Interface MAC is displayed)
          - list: The Position the Interface returned
-
-        Optional (when mac is True)
-         - bytes: The Mac address of the Interface
         """
-        data = self.conn.read(self.state, self.info.mac, mac)
+        data = self.conn.read(self.state)
         return data
 
-    def run(self, info: InterfaceInfo = None) -> None:
+    def run(self, info: InterfaceInfo) -> None:
         """
         Execute the 6 Steps displayed here:
 
@@ -202,10 +185,7 @@ class Flasher:
          5.  Tells the board that the files can now be installed
          6.  Restarts the board
         """
-        if info is None:
-            self.info = self.conn.get_interface_info()
-        else:
-            self.info = info
+        self.info = info
         # Offer the flash
         self.logger.step("Sending the offer to flash")
         try:
@@ -232,7 +212,7 @@ class Flasher:
         self.logger.step("Rebooting the Board")
         self.do(b"TERM\nInstallation successful\n")
 
-        self.logger.info(f"The Interface [{info.mac}] is successfully flashed")
+        self.logger.info(f"The Interface [{info.mac.hex(':')}] is successfully flashed")
         return
 
     def do(self, data: bytes, response: bytes = None) -> None:
@@ -429,15 +409,10 @@ class FlashInterface:
     Attributes
     ----------
 
-    last_mac : bytes
-        The MAC Address of the Interface flashed before (default: DUMMY)
     logger : Logger
         The Logger to log LogRecords
     connection : UDPConnection
         The Connection to wait for new Interfaces
-
-    _already : bool
-        Indicator if the Interface was flashed before
 
     Methods
     -------
@@ -448,8 +423,6 @@ class FlashInterface:
     flash_until_stopped() -> None
         Run flash until someone stops the program
     """
-    _already: int = False
-    last_mac: bytes = b"DUMMY"
     def __init__(self, log_level: int = logging.INFO) -> None:
         """
         Initialize a new FlashInterface
@@ -469,9 +442,8 @@ class FlashInterface:
         """
         Flash one Interface
         """
-        self.logger.info("Flashing one Interface the stopping program...")
         interface = self.connection.get_interface_info()
-        flash = Flasher(interface.mac, logger=self.logger)
+        flash = Flasher(self.connection, logger=self.logger)
         flash.run(interface)
         self.connection.close()
 
@@ -479,15 +451,13 @@ class FlashInterface:
         """
         Flash until someone stops the program
         """
-        self.logger.info("Flashing until someone stops the program...")
         try:
             while True:
                 interface = self.connection.get_interface_info()
-                if interface is not None:
-                    if interface.mac != self.last_mac:
+                if interface:
                         # Sleep for some seconds to give the interface some time to connect to the Network
                         time.sleep(7)
-                        flash = Flasher(mac=interface.mac, logger=self.logger)
+                        flash = Flasher(self.connection, logger=self.logger)
                         flash.run(interface)
                 # Wait for the interface to reboot to not get any requests after the reboot
                 time.sleep(10)
