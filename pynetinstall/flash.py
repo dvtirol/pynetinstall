@@ -6,7 +6,6 @@ import importlib
 
 from io import BufferedReader
 from urllib import request
-from multiprocessing import Process
 from http.client import HTTPResponse
 from os.path import getsize, basename
 from configparser import ConfigParser
@@ -432,8 +431,6 @@ class FlashInterface:
 
     last_mac : bytes
         The MAC Address of the Interface flashed before (default: DUMMY)
-    process : Process
-        The current running Process (default: None)
     logger : Logger
         The Logger to log LogRecords
     connection : UDPConnection
@@ -453,7 +450,6 @@ class FlashInterface:
     """
     _already: int = False
     last_mac: bytes = b"DUMMY"
-    process: Process = None
     def __init__(self, log_level: int = logging.INFO) -> None:
         """
         Initialize a new FlashInterface
@@ -487,37 +483,14 @@ class FlashInterface:
         try:
             while True:
                 interface = self.connection.get_interface_info()
-                # Sleep for some seconds to give the interface some time to connect to the Network
-                time.sleep(7)
                 if interface is not None:
                     if interface.mac != self.last_mac:
-                        # Enable the logger when the MAC Address changed
-                        if self.logger.quiet:
-                            self.logger.quiet = False
-                            self.logger.debug(f"Interface Found: {interface.mac}")
-                        if self.process is None:
-                            flash = Flasher(mac=interface.mac, logger=self.logger)
-                            self.process = Process(target=flash.run, args=(interface,))
-                            self.process.start()
-                            # Wait for the Process to finish
-                            self.process.join()
-                            # exitcode = 0 -> flash.run() ran without an error
-                            if self.process.exitcode == 0:
-                                self.last_mac = interface.mac
-                                self._already = 0
-                                # Wait for the interface to reboot to not get any requests after the reboot
-                                time.sleep(10)
-                            # Set the `process` to None to be able to start a new one
-                            if not self.process.is_alive():
-                                self.process = None
-                    else:
-                        # Send the Information that the interface was the last interface that was configured 
-                        # And Mute all logs until a new Interface was found
-                        if self._already is False:
-                            self.logger.info(f"The Interface [{interface.mac}] is already configured")
-                            self.logger.debug("Searching for a Interface...")
-                            self.logger.quiet = True
-                            self._already = True
+                        # Sleep for some seconds to give the interface some time to connect to the Network
+                        time.sleep(7)
+                        flash = Flasher(mac=interface.mac, logger=self.logger)
+                        flash.run(interface)
+                # Wait for the interface to reboot to not get any requests after the reboot
+                time.sleep(10)
                 interface = None
         except KeyboardInterrupt:
             self.logger.info("The Flash got Stopped")
