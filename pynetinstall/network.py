@@ -77,7 +77,7 @@ class UDPConnection(socket.socket):
         This function gets the MAC-Address of the interface defined in `interface_name`
         """
         arg = struct.pack('256s', bytes(self._interface_name, 'utf-8')[:15])
-        self.mac = fcntl.ioctl(self.fileno(), 0x8927, arg)[18:24]
+        self.mac = fcntl.ioctl(self.fileno(), 0x8927, arg)[18:24]  # 0x8927: SIOCGIFHWADDR
         self.logger.debug(f"The MAC-Address of the Interface {self._interface_name} is {self.mac}")
 
     def read(self, state: list, _repeated = 0) -> tuple[bytes, list] or None:

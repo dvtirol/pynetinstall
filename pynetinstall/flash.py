@@ -140,9 +140,10 @@ class Flasher:
         
         cparser = ConfigParser()
         if not cparser.read(config_file):
-            raise FatalError("Configuration File ({config_file}) not found")
+            raise FatalError(f"Configuration File ({config_file}) not found")
         try:
-            mod, _, cls = cparser["pynetinstall"]["plugin"].partition(":")
+            plugin = cparser.get("pynetinstall", "plugin", fallback="pynetinstall.plugins.simple:Plugin")
+            mod, _, cls = plugin.partition(":")
             # Import the Plugin using the importlib library
             plug = getattr(importlib.import_module(mod, __name__), cls)
             self.logger.debug(f"The Plugin ({plug}) is successfully imported")
