@@ -33,6 +33,9 @@ custom Python module for dynamically fetching different configuration files by
 matching the MAC address of the connected RouterBoard. The module will be
 searched for in Python's path ($PWD, $PATH or $PYTHONPATH). This is not well
 documented; please see the source at `pynetinstall/plugins/simple.py`.
+
+More information on setting up dnsmasq can be obtained from here:
+https://openwrt.org/toh/mikrotik/common#netboot_of_openwrt_uses_dhcpbootptftp
 -->
 
 [merlinthemagic/MTM-Mikrotik]: https://github.com/merlinthemagic/MTM-Mikrotik/tree/master/Docs/Examples/TFTP-Images
