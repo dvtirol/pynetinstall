@@ -443,7 +443,7 @@ class FlashInterface:
     flash_until_stopped() -> None
         Run flash until someone stops the program
     """
-    def __init__(self, log_level: int = logging.INFO) -> None:
+    def __init__(self, interface_name : str = "eth0", log_level: int = logging.INFO) -> None:
         """
         Initialize a new FlashInterface
 
@@ -452,11 +452,14 @@ class FlashInterface:
         Argument
         --------
 
+        interface_name : str
+            The name of the Interface to listen on (default: "eth0")
+
         log_level : int
             What level should be logged by the `logger`
         """
         self.logger = Logger(log_level)
-        self.connection = UDPConnection(logger=self.logger)
+        self.connection = UDPConnection(logger=self.logger, interface_name=interface_name)
 
     def flash_once(self) -> None:
         """

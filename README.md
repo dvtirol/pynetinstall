@@ -145,8 +145,8 @@ fl_int.flash_until_stopped()
 When you see the line (in the CLI of the Routerboard):
 `Waiting for installation Server...`
 
-	You can start the main.py
-`python main.py`
+	You can start the program
+`python -m pynetinstall`
 
 
 ## Logging
