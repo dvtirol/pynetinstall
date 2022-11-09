@@ -429,10 +429,12 @@ class FlashInterface:
     Attributes
     ----------
 
-    logger : Logger
-        The Logger to log LogRecords
     connection : UDPConnection
         The Connection to wait for new Interfaces
+    config_file : str
+        The location of the configuration file (default: config.ini)
+    logger : Logger
+        The Logger to log LogRecords
 
     Methods
     -------
@@ -443,7 +445,7 @@ class FlashInterface:
     flash_until_stopped() -> None
         Run flash until someone stops the program
     """
-    def __init__(self, interface_name : str = "eth0", log_level: int = logging.INFO) -> None:
+    def __init__(self, interface_name : str = "eth0", config_file : str = "config.ini", log_level: int = logging.INFO) -> None:
         """
         Initialize a new FlashInterface
 
@@ -459,14 +461,15 @@ class FlashInterface:
             What level should be logged by the `logger`
         """
         self.logger = Logger(log_level)
+        self.config_file = config_file
         self.connection = UDPConnection(logger=self.logger, interface_name=interface_name)
 
     def flash_once(self) -> None:
         """
         Flash one Interface
         """
+        flash = Flasher(self.connection, config_file=self.config_file, logger=self.logger)
         interface = self.connection.get_interface_info()
-        flash = Flasher(self.connection, logger=self.logger)
         flash.run(interface)
         self.connection.close()
 
@@ -477,21 +480,21 @@ class FlashInterface:
         try:
             while True:
                 try:
+                    flash = Flasher(self.connection, config_file=self.config_file, logger=self.logger)
                     interface = self.connection.get_interface_info()
                     if interface:
                         self.logger.info(f"Device found! mac={interface.mac}, model={interface.model}, arch={interface.arch}")
                         # Sleep for some seconds to give the interface some time to connect to the Network
                         time.sleep(7)
-                        flash = Flasher(self.connection, logger=self.logger)
                         flash.run(interface)
                     # Wait for the interface to reboot to not get any requests after the reboot
                     time.sleep(10)
                     interface = None
                 except AbortFlashing as e:
-                    self.logger.error("Flashing failed: {e}")
+                    self.logger.error(f"Flashing failed: {e}")
                     continue
         except FatalError as e:
-            self.logger.error("Unable to start Flasher: {e}")
+            self.logger.error(f"Unable to start Flasher: {e}")
             return
         finally:
             self.connection.close()
