@@ -18,7 +18,8 @@ BOOTP. Boot images can be obtained either by extracting them from
 [merlinthemagic/MTM-Mikrotik] repo.
 
 Provide the path to the firmware you want to install in pyNetinstall's
-`config.ini`. A custom default configuration script can be provided as well:
+`config.ini` (searched in the current working directory). A custom default
+configuration script can be provided as well:
 
 ```
 [pynetinstall]
@@ -29,7 +30,8 @@ config=<PATH_TO_CONFIG_RSC>
 <!--
 By setting `plugin=<python_module>:<a_class>` in `config.ini`, you can create a
 custom Python module for dynamically fetching different configuration files by
-matching the MAC address of the connected RouterBoard. This is not well
+matching the MAC address of the connected RouterBoard. The module will be
+searched for in Python's path ($PWD, $PATH or $PYTHONPATH). This is not well
 documented; please see the source at `pynetinstall/plugins/simple.py`.
 -->
 
