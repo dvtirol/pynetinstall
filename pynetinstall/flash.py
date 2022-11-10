@@ -483,7 +483,7 @@ class FlashInterface:
                     flash = Flasher(self.connection, config_file=self.config_file, logger=self.logger)
                     interface = self.connection.get_interface_info()
                     if interface:
-                        self.logger.info(f"Device found! mac={interface.mac}, model={interface.model}, arch={interface.arch}")
+                        self.logger.info(f"Device found! mac={interface.mac.hex(':')}, model={interface.model}, arch={interface.arch}")
                         # Sleep for some seconds to give the interface some time to connect to the Network
                         time.sleep(7)
                         flash.run(interface)
