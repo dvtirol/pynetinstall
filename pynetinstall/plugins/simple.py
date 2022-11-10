@@ -35,14 +35,14 @@ class Plugin:
     """
     def __init__(self, config: ConfigParser):
         self.firmware = config.get("pynetinstall", "firmware", fallback=None)
-        self.default_config.get("pynetinstall", "config", fallback=None)
+        self.default_config = config.get("pynetinstall", "config", fallback=None)
 
         if not self.firmware:
-            raise KeyError("[pynetinstall]firmware is not defined in the configuration")
+            raise KeyError(f"[pynetinstall]firmware is not defined in the configuration")
         if not os.path.exists(self.firmware):
-            raise ValueError("The file [pynetinstall]firmware={self.firmware!r} does not exist")
+            raise ValueError(f"The file [pynetinstall]firmware={self.firmware!r} does not exist")
         if self.default_config and not os.path.exists(self.default_config):
-            raise ValueError("The file [pynetinstall]config={self.config!r} does not exist")
+            raise ValueError(f"The file [pynetinstall]config={self.default_config!r} does not exist")
 
     def get_files(self, info: InterfaceInfo) -> tuple[BufferedReader, BufferedReader]:
         """
