@@ -176,5 +176,10 @@ class UDPConnection(socket.socket):
                 mac  = data[:6].hex(':').upper()
                 self.logger.debug(f"Interface Found: {mac}")
                 return InterfaceInfo.from_data(data)
+            else:
+                # right after flashing failed, the device will send a lot of
+                # RETR and WTRM (retry, terminate) packets. we just ignore them
+                # and wait for the device to be removed.
+                self.logger.debug(f"found device in bad mode: {data[20:24]} (state {header_state})")
 
         return None

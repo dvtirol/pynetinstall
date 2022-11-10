@@ -487,8 +487,8 @@ class FlashInterface:
                         # Sleep for some seconds to give the interface some time to connect to the Network
                         time.sleep(7)
                         flash.run(interface)
-                    # Wait for the interface to reboot to not get any requests after the reboot
-                    time.sleep(10)
+                        # Wait for the interface to reboot to not get any requests after the reboot
+                        time.sleep(10)
                     interface = None
                 except AbortFlashing as e:
                     self.logger.error(f"Flashing failed: {e}")
