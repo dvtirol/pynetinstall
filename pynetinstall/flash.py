@@ -198,8 +198,7 @@ class Flasher:
         except OSError as e:
             raise AbortFlashing(f"Network error: {e}")
         # Format the board
-        self.logger.info(f"Device accepted flash offer on interface {info.mac.hex(':')}")
-        self.logger.step("Formatting the board")
+        self.logger.info(f"Formatting {info.mac.hex(':')} ...")
         self.do(b"", b"STRT")
         # Spacer to give the board some time to prepare for the file
         self.logger.step("Waiting until the Board is ready to receive the file")
@@ -214,7 +213,7 @@ class Flasher:
         self.logger.step("Rebooting the Board")
         self.do(b"TERM\nInstallation successful\n")
 
-        self.logger.info(f"The Interface {info.mac.hex(':')} was successfully flashed")
+        self.logger.info(f"{info.mac.hex(':')} was successfully flashed.")
         return
 
     def do(self, data: bytes, response: bytes = None) -> None:
@@ -316,7 +315,7 @@ class Flasher:
         # Send the .npk file
         npk_file, npk_file_name, npk_file_size = self.resolve_file_data(npk)
         self.do(bytes(f"FILE\n{npk_file_name}\n{str(npk_file_size)}\n", "utf-8"), b"RETR")
-        self.logger.debug(f"Send the {npk_file_name}-File to the Routerboard")
+        self.logger.info(f"Uploading {npk_file_name}")
         self.do_file(npk_file, npk_file_size, npk_file_name)
 
         self.do(b"", b"RETR")
@@ -326,7 +325,7 @@ class Flasher:
         if rsc:
             rsc_file, rsc_file_name, rsc_file_size = self.resolve_file_data(rsc)
             self.do(bytes(f"FILE\nautorun.scr\n{str(rsc_file_size)}\n", "utf-8"), b"RETR")
-            self.logger.debug(f"Send the {rsc_file_name}-File (autorun.scr) to the Routerboard")
+            self.logger.info(f"Uploading {rsc_file_name}")
             self.do_file(rsc_file, rsc_file_size, rsc_file_name)
 
         self.do(b"", b"RETR")
