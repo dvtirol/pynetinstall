@@ -81,12 +81,6 @@ class Flasher:
 
     resolve_file_data(data) -> tuple[BufferedReader or parse.ParseResult, str, int]
         Gets information about a file
-
-    Static Method
-    -------------
-
-    update_file_bar(curr_pos, max_pos, name, leng=50) -> None
-        Updated a Loading bar to display the progress when flashing a file
     """
 
     info: InterfaceInfo
@@ -275,6 +269,7 @@ class Flasher:
             The name of the file to send (Would be used if the file_bar would be updated)
         """
         file_pos = 0
+        next_log = 10 # output log message every 10% (for large files only)
         while True:
             self.state[1] += 1
             data = file.read(self.MAX_BYTES)
@@ -284,7 +279,10 @@ class Flasher:
             self.wait()
 
             file_pos += len(data)
-            # self.update_file_bar(file_pos, max_pos, file_name)
+            file_percent = round(100*file_pos/max_pos)
+            if file_percent >= next_log and max_pos > 100000: # 100kB
+                self.logger.info(f"    {file_name}: {file_percent}%")
+                next_log += 10
             if file_pos >= max_pos:
                 res, new_state = self.read()
                 if res is None:
@@ -394,33 +392,6 @@ class Flasher:
                 except:
                     raise AbortFlashing(f"Unable to read file/url/BufferedReader ({data})") # TODO: FatalError?
         return file, name, size
-
-    @staticmethod
-    def update_file_bar(curr_pos: int, max_pos: int, name: str, leng: int = 50):
-        """
-        Updates a Loading Bar when no print statements get executed during updating
-
-        Calculates how many percent are already processed and displays that.
-
-        Arguments
-        ---------
-
-        curr_pos : int
-            The current pos what is already processed
-        max_pos : int
-            The highest pos what should be processed
-        name : str
-            A Text to display in front of the progress bar
-        leng : int
-            The length of the progress bar (default: 50)
-        """
-        # Calculate the percentage of the progress
-        proz = round((curr_pos/max_pos) * 100)
-        # Calculate how much > have to bo displayed
-        done = round((leng/100) * proz)
-        # Create the string inside of the loading bar (`[]`)
-        inner = "".join([">" for i in range(done)] + [" " for i in range(leng-done)])
-        sys.stdout.write(f"\rFlashing {name} - [{inner}] {proz}%")
 
 class FlashInterface:
     """
