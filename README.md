@@ -75,9 +75,9 @@ Windows GUI version as well.
 
 2. **Start `netinstall-cli`**  
    `sudo ./netinstall-cli -a 127.0.0.2 netinstall-cli`  
-   The program needs a RouterOS `.npk` package as a command line argument, but
-   it doesn't check what file you provided. Hence, it suffices to provide just
-   any existing file. We want it to listen on the loopback interface.
+   <!-- The program needs a RouterOS `.npk` package as a command line argument,
+   but it doesn't check what file you provided. Hence, it suffices to provide
+   just any existing file. We want it to listen on the loopback interface. -->
 
 3. **Run `dhtest`**  
    `sudo dhtest -T 5 -o ARM64__boot -i lo`  
@@ -94,12 +94,13 @@ Windows GUI version as well.
    netinstall-cli|grep -C10 __boot`. -->
 
 4. **Download the image**  
-   `curl tftp://127.0.0.1/linux.arm > netinstall.arm64`
+   `curl tftp://127.0.0.1/linux.arm > netinstall.arm64`  
    Note that the file is always called `linux.arm`, even on other architectures.
    After initiating a TFTP download, the DHCP subsystem will be shut down, and
    further downloads will not work either. To fetch another image, restart
-   `netinstall-cli`. <!-- Mikrotik devices use a --tftp-blksize of 1452, but the
-   curl defaults work too. -->
+   `netinstall-cli`.
+   <!-- Mikrotik devices use a --tftp-blksize of 1452, but the curl defaults
+   work too. -->
 
 [Downloads page]: https://mikrotik.com/download
 [Download Archive]: https://mikrotik.com/download/archive
