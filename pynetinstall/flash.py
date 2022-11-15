@@ -237,10 +237,9 @@ class Flasher:
             return True
         else:
             self.logger.debug(f"Waiting for the Response {response}")
-            self.wait() 
             res, new_state = self.read()
             if res is None:
-                raise AbortFlashing(f"Did not receive response to {data} (state {self.state})")
+                raise AbortFlashing(f"Did not receive response to {data} (expected {response})")
             self.state = new_state
             # Response includes
             # 1. Destination MAC Address    (6 bytes [:6])
@@ -275,7 +274,7 @@ class Flasher:
             self.write(data)
             self.state[0] += 1
             # Waiting for a response from interface to check that the interface received the Data
-            self.wait()
+            self.read() # should be b"RETR"
 
             file_pos += len(data)
             file_percent = round(100*file_pos/max_pos)
@@ -330,12 +329,6 @@ class Flasher:
 
         self.do(b"", b"RETR")
         self.logger.debug("Done with the Configuration File")
-
-    def wait(self) -> None:
-        """
-        Read some data from the connection to let some time pass
-        """
-        self.read()
 
     def resolve_file_data(self, data) -> tuple[BufferedReader or HTTPResponse, str, int]:
         """
@@ -454,11 +447,7 @@ class FlashInterface:
                     interface = self.connection.get_interface_info()
                     if interface:
                         self.logger.info(f"Device found! mac={interface.mac.hex(':')}, model={interface.model}, arch={interface.arch}")
-                        # Sleep for some seconds to give the interface some time to connect to the Network
-                        time.sleep(7)
                         flash.run(interface)
-                        # Wait for the interface to reboot to not get any requests after the reboot
-                        time.sleep(10)
                     interface = None
                 except AbortFlashing as e:
                     self.logger.error(f"Flashing failed: {e}")
