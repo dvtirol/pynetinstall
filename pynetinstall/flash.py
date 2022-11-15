@@ -172,7 +172,10 @@ class Flasher:
          - bytes: The Data received (Without the first 6 bytes where the Interface MAC is displayed)
          - list: The Position the Interface returned
         """
-        data = self.conn.read(self.state)
+        try:
+            data = self.conn.read(self.state)
+        except TimeoutError as e:
+            raise AbortFlashing(f"Device did not respond")
         return data
 
     def run(self, info: InterfaceInfo) -> None:
@@ -309,7 +312,7 @@ class Flasher:
         """
         npk, rsc = self.plugin.get_files(self.info)
         if npk is None:
-            raise AbortFlashing("Plugin did not return RouterOS location") # TODO: FatalError?
+            raise AbortFlashing("Plugin did not return RouterOS.")
 
         # Send the .npk file
         npk_file, npk_file_name, npk_file_size = self.resolve_file_data(npk)
@@ -382,7 +385,7 @@ class Flasher:
                     file = open(data, "rb")
                     self.logger.debug("Resolved File-Data from the Path/Filename")
                 except:
-                    raise AbortFlashing(f"Unable to read file/url/BufferedReader ({data})") # TODO: FatalError?
+                    raise AbortFlashing(f"Unable to read file/url/BufferedReader ({data})")
         return file, name, size
 
 class FlashInterface:

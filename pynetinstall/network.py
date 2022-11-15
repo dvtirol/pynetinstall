@@ -42,7 +42,7 @@ class UDPConnection(socket.socket):
     """
     mac: bytes
 
-    def __init__(self, addr: tuple = ("0.0.0.0", 5000), interface_name: str = "eth0", error_repeat: int = 25, logger: Logger = None,
+    def __init__(self, addr: tuple = ("0.0.0.0", 5000), interface_name: str = "eth0", error_repeat: int = 25, logger: Logger = None, timeout: int = 10,
                  family: socket.AddressFamily or int = socket.AF_INET, kind: socket.SocketKind or int = socket.SOCK_DGRAM, *args, **kwargs) -> None:
         """
         Initialize a new UDPConnection
@@ -60,6 +60,8 @@ class UDPConnection(socket.socket):
             The name of the Interface where the Interface is connected to (default: "eth0")
         error_repeat : int
             How often a function is repeated until it gets the right response or it raises an error (default: 25)
+        timeout : int
+            Time in seconds to wait for responses from devices before aborting (default: 10)
         """
         super().__init__(family, kind, *args, **kwargs)
         self._interface_name = interface_name
@@ -69,6 +71,7 @@ class UDPConnection(socket.socket):
         self.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
         self.bind(addr)
+        self.settimeout(timeout)
         self.logger.debug(f"A New UDPConnection is created on {addr}")
         self._get_source_mac()
 
@@ -168,7 +171,10 @@ class UDPConnection(socket.socket):
         """
         
         self.logger.debug("Searching for a Interface...")
-        data, addr = self.recvfrom(self.MAX_BYTES_RECV)
+        try:
+            data, addr = self.recvfrom(self.MAX_BYTES_RECV)
+        except TimeoutError:
+            return None
 
         if addr[0] == "0.0.0.0": # see self.read() for details.
             header_state = [*struct.unpack("<HH", data[16:20])]
