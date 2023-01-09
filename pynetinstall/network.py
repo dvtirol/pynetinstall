@@ -42,7 +42,7 @@ class UDPConnection(socket.socket):
     """
     mac: bytes
 
-    def __init__(self, addr: tuple = ("0.0.0.0", 5000), interface_name: str = "eth0", error_repeat: int = 25, logger: Logger = None, timeout: int = 10,
+    def __init__(self, addr: tuple = ("0.0.0.0", 5000), interface_name: str = "eth0", error_repeat: int = 25, logger: Logger = None, timeout: int = 60,
                  family: socket.AddressFamily or int = socket.AF_INET, kind: socket.SocketKind or int = socket.SOCK_DGRAM, *args, **kwargs) -> None:
         """
         Initialize a new UDPConnection
@@ -61,7 +61,7 @@ class UDPConnection(socket.socket):
         error_repeat : int
             How often a function is repeated until it gets the right response or it raises an error (default: 25)
         timeout : int
-            Time in seconds to wait for responses from devices before aborting (default: 10)
+            Time in seconds to wait for responses from devices before aborting (default: 60)
         """
         super().__init__(family, kind, *args, **kwargs)
         self._interface_name = interface_name
