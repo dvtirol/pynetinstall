@@ -1,12 +1,24 @@
 import sys
-from pynetinstall import FlashInterface
+import argparse
 
-interface = "eth0"
-if len(sys.argv) > 1:
-    if sys.argv[1] == "-h":
-        print(f"Usage: {sys.argv[0]} [IFACE]")
-        sys.exit(0)
-    interface = sys.argv[1]
+from pynetinstall.flash import FlashInterface, FatalError, AbortFlashing
 
-fl_dev = FlashInterface(interface, "config.ini")
-fl_dev.flash_until_stopped()
+parser = argparse.ArgumentParser(__package__)
+parser.add_argument("-c", "--config", default="/etc/pynetinstall.ini", help="set location of configuration file")
+parser.add_argument("-i", "--interface", default="eth0", help="ethernet interface to listen on")
+parser.add_argument("-1", "--oneshot", action="store_true", help="exit after flashing once")
+args = parser.parse_args()
+
+try:
+    fl_dev = FlashInterface(args.interface, args.config)
+
+    if args.oneshot:
+        fl_dev.flash_once()
+    else:
+        fl_dev.flash_until_stopped()
+except FatalError as e:
+    parser.error(e)
+except AbortFlashing as e:
+    sys.exit(1)
+except KeyboardInterrupt as e:
+    sys.exit(130)
