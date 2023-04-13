@@ -454,6 +454,7 @@ class FlashInterface:
             while True:
                 try:
                     flash = Flasher(self.connection, config_file=self.config_file, logger=self.logger)
+                    self.logger.info(f"Waiting for devices...")
                     interface = self.connection.get_interface_info()
                     if interface:
                         self.logger.info(f"Device found! mac={interface.mac.hex(':')}, model={interface.model}, arch={interface.arch}")
@@ -462,8 +463,5 @@ class FlashInterface:
                 except AbortFlashing as e:
                     self.logger.error(f"Flashing failed: {e}")
                     continue
-        except FatalError as e:
-            self.logger.error(f"Unable to start Flasher: {e}")
-            return
         finally:
             self.connection.close()
