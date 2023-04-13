@@ -193,7 +193,7 @@ class Flasher:
         """
         self.info = info
         # Offer the flash
-        self.logger.step("Sending the offer to flash")
+        self.logger.debug("Sending the offer to flash")
         try:
             self.state = [0, 0]
             self.do(b"OFFR\n\n", b"YACK\n")
@@ -204,16 +204,16 @@ class Flasher:
         self.logger.info(f"Formatting {info.mac.hex(':')} ...")
         self.do(b"", b"STRT")
         # Spacer to give the board some time to prepare for the file
-        self.logger.step("Waiting until the Board is ready to receive the file")
+        self.logger.debug("Waiting until the Board is ready to receive the file")
         self.do(b"", b"RETR")
         # Send the files
-        self.logger.step("Sending the Files to the Board")
+        self.logger.debug("Sending the Files to the Board")
         self.do_files()
         # Tell the board that the installation is done
-        self.logger.step("Installation Done")
+        self.logger.debug("Installation Done")
         self.do(b"FILE\n", b"WTRM")
         # Tell the board that it can now reboot and load the files
-        self.logger.step("Rebooting the Board")
+        self.logger.debug("Rebooting the Board")
         self.do(b"TERM\nInstallation successful\n")
 
         self.logger.info(f"{info.mac.hex(':')} was successfully flashed.")

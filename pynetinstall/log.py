@@ -12,8 +12,6 @@ class Logger:
         When set to True no logs will be (default: False)
     debug_logger : logging.Logger
         Logs Records with the Debug Level (10)
-    step_logger : logging.Logger
-        Logs Records with the Step Level (15)
     info_logger : logging.Logger
         Logs Records with the Info Level (20)
     error_logger : logging.Logger
@@ -24,9 +22,6 @@ class Logger:
 
     debug(message, force=False) -> None
         Log a message to the `debug_logger`
-
-    step(message, force=False) -> None
-        Log a message wo the `step_logger`
 
     info(message, force=False) -> None
         Log a message to the `info_logger`
@@ -49,7 +44,6 @@ class Logger:
             What level should be logged from the Logger (default: logging.INFO)
         """
         self.debug_logger: logging.Logger = logging.getLogger("pynet-deb")
-        self.step_logger: logging.Logger = logging.getLogger("pynet-stp")
         self.info_logger: logging.Logger = logging.getLogger("pynet-inf")
         self.error_logger: logging.Logger = logging.getLogger("pynet-err")
         
@@ -69,21 +63,6 @@ class Logger:
         """
         if not self.quiet or force:
             self.debug_logger.debug(message)
-
-    def step(self, message: str, force: bool = False) -> None:
-        """
-        Log Records to the `step_logger`
-
-        Arguments
-        ---------
-
-        message : str
-            The message to log
-        force : bool
-            If the message should be logged even if the `quiet` Attribute is set to True (default: False)
-        """
-        if not self.quiet or force:
-            self.step_logger.log(15, message)
 
     def info(self, message: str, force: bool = False) -> None:
         """
@@ -128,4 +107,3 @@ class Logger:
         self.debug_logger.setLevel(level)
         self.error_logger.setLevel(level)
         self.info_logger.setLevel(level)
-        self.step_logger.setLevel(level)
