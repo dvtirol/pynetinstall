@@ -1,13 +1,29 @@
 # pyNetinstall
 
-Free and Open-Source netInstall implementation for Flashing Mikrotik RouterBoards
+Free and Open Source netInstall implementation for Flashing Mikrotik RouterBoards
+
+
+## Introduction
+
+pyNetinstall is meant as a component of a zero-touch deployment system. Using it
+one can configure RouterBoards en masse easily. The plug-in system allows
+interfacing pyNetinstall with existing data center infrastructure management
+systems, uploading individual firmware and configuration per device based on MAC
+address, model type and serial number.
 
 
 ## Usage
 
-`python -m pynetinstall [NAME_OF_ETHERNET_INTERFACE]`
+`python -m pynetinstall [-c CONFIG] [-i INTERFACE] [-l LOGGING] [-1] [-v] [-h]`
 
-You must provide the name of your ethernet interface if it is not named `eth0`.
+*-c CONFIG*: Path to the configuration file. Defaults to `/etc/pynetinstall.ini`.  
+*-i INTERFACE*: Ethernet interface to listen on. Defaults to `eth0`.  
+*-l LOGGING*: [Python logging configuration].  
+*-1*: Enable one-shot mode (exit after flashing once).  
+*-v*: Increase verbosity. Default is errors and warnings.  
+*-h*: Display help and exit.
+
+[Python logging configuration]: https://docs.python.org/3/library/logging.config.html#logging-config-fileformat
 
 
 ## Setup
