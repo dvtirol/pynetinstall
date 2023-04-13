@@ -432,7 +432,10 @@ class FlashInterface:
         """
         self.logger = Logger(log_level)
         self.config_file = config_file
-        self.connection = UDPConnection(logger=self.logger, interface_name=interface_name)
+        try:
+            self.connection = UDPConnection(logger=self.logger, interface_name=interface_name)
+        except OSError as e:
+            raise FatalError(f"{e} ({interface_name})")
 
     def flash_once(self) -> None:
         """
