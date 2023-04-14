@@ -16,7 +16,7 @@ servers; these services should be handled by `dnsmasq`.
 
 ## Usage
 
-`python -m pynetinstall [-c CONFIG] [-i INTERFACE] [-l LOGGING] [-1] [-v] [-h]`
+`python -m pynetinstall [-c CONFIG] [-i INTERFACE] [-l LOGGING] [-1] [-v|-vv] [-h]`
 
 *-c CONFIG*: Path to the configuration file. Defaults to `/etc/pynetinstall.ini`.  
 *-i INTERFACE*: Ethernet interface to listen on. Defaults to `eth0`.  
@@ -88,7 +88,7 @@ config=<PATH_TO_CONFIG_RSC>
 
 ## Providing a custom plugin
 
-By writing a small python module, the served firmware and configuration file can
+By writing a small python module the served firmware and configuration file can
 be varied at runtime, based on the device connected.
 
 To load a custom plugin, the `plugin` parameter should be defined in
@@ -103,18 +103,24 @@ plugin=<PYTHON_MODULE>:<CLASS_NAME>
 # additional keys or sections defined by the plugin
 ```
 
-Such a plugin is simply a python file, containing a class that implements
-`get_files()`. Implementing `__init__()` is optional and only required if access
+Such a plugin is simply a python class that implements `get_files(info)`,
+returning a tuple (firmware, config). Firmware and config may be returned as a
+path on disk (string), an HTTP  or HTTPS URL (string), or a [file object] as
+returned by e.g. `open()`.
+
+Additionally, config may be `None` if no custom default configuration is
+desired. If firmware is `None`, an error is assumed and the current flashing
+process is aborted and pyNetinstall resets for the next flashing cycle.
+
+`get_files()` is passed an InterfaceInfo object, which contains information on
+the connected RouterBoard. The available attributes are described in the example
+below.
+
+Implementing `__init__(config)` is optional and only required if access
 to `pynetinstall.ini` is needed through the passed [ConfigParser] object.
 Exceptions raised during `__init__()` will result in pyNetinstall exiting.
 
-`get_files()` should return a tuple (firmware, config). Each element may be a
-path (string), HTTP(s) URL (string), or an opened file handle. Additionally,
-config may be `None` if no default configuration is desired. If firmware is
-`None`, an error is assumed and the current flashing process is aborted.
-`get_files()` is passed an InterfaceInfo object, which contains information on
-the connected RouterBoard.
-
+[file object]: https://docs.python.org/3/glossary.html#term-file-object
 [ConfigParser]: https://docs.python.org/3/library/configparser.html#configparser.ConfigParser
 
 ```
@@ -170,3 +176,10 @@ Windows GUI version as well.
 [Downloads page]: https://mikrotik.com/download
 [Download Archive]: https://mikrotik.com/download/archive
 [dhtest sources]: https://github.com/saravana815/dhtest
+
+## Acknowledgements
+
+This project is based on the wonderful reverse engineering work of
+[merlinthemagic].
+
+[merlinthemagic]: https://github.com/merlinthemagic/MTM-Mikrotik/tree/master/Src/Tools/NetInstall
