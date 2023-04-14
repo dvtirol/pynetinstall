@@ -138,10 +138,18 @@ class Flasher:
         try:
             plugin = cparser.get("pynetinstall", "plugin", fallback="pynetinstall.plugins.simple:Plugin")
             mod, _, cls = plugin.partition(":")
-            # Import the Plugin using the importlib library
+            if not cls:
+                cls = "Plugin"
+
             plug = getattr(importlib.import_module(mod, __name__), cls)
             self.logger.debug(f"The Plugin ({plug}) is successfully imported")
-            return plug(config=cparser)
+
+            try:
+                # attempt to initialize plugin with config
+                return plug(config=cparser)
+            except TypeError:
+                # if no custom __init__() was defined, no config will be available
+                return plug()
         except Exception as e:
             raise FatalError(f"Could not load Plugin {plug}: {e}")
 
