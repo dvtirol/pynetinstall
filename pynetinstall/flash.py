@@ -151,7 +151,7 @@ class Flasher:
                 # if no custom __init__() was defined, no config will be available
                 return plug()
         except Exception as e:
-            raise FatalError(f"Could not load Plugin {plug}: {e}")
+            raise FatalError(f"Could not load {plug.__module__}.{plug.__name__}: {e} ({type(e).__name__})")
 
     def write(self, data: bytes) -> None:
         """

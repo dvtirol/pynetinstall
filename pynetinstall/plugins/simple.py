@@ -38,11 +38,11 @@ class Plugin:
         self.default_config = config.get("pynetinstall", "config", fallback=None)
 
         if not self.firmware:
-            raise KeyError(f"[pynetinstall]firmware is not defined in the configuration")
+            raise KeyError(f"[pynetinstall]firmware= is not defined in the configuration")
         if not os.path.exists(self.firmware):
-            raise ValueError(f"The file [pynetinstall]firmware={self.firmware!r} does not exist")
+            raise ValueError(f"The firmware file {self.firmware!r} does not exist")
         if self.default_config and not os.path.exists(self.default_config):
-            raise ValueError(f"The file [pynetinstall]config={self.default_config!r} does not exist")
+            raise ValueError(f"The config file {self.default_config!r} does not exist")
 
     def get_files(self, info: InterfaceInfo) -> tuple[BufferedReader, BufferedReader]:
         """
