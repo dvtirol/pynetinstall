@@ -11,6 +11,8 @@ interfacing pyNetinstall with existing data center infrastructure management
 systems, uploading individual firmware and configuration per device based on MAC
 address, model type and serial number.
 
+Unlike the official tooling, pyNetinstall does not include DHCP and TFTP
+servers; these services should be handled by `dnsmasq`.
 
 ## Usage
 
@@ -25,17 +27,58 @@ address, model type and serial number.
 
 [Python logging configuration]: https://docs.python.org/3/library/logging.config.html#logging-config-fileformat
 
+## Theory of Operation
 
-## Setup
+Mikrotik provides a special boot image (embedded in the netinstall tools) that
+will flash a RouterOS firmware and configuration file on the device. The
+firmware and configuration is transmitted over a proprietary UDP based protocol,
+which pyNetinstall implements.
+
+The netinstall protocol provides some device information, including model and
+serial numbers. By implementing a simple python module, these can be used as
+parameters to dynamically select firmware and configuration, or directly stream
+them from HTTP.
+
+The boot image itself is loaded by the RouterBOOT bootloader using BOOTP/DHCP
+and TFTP. Usually, RouterBoards can be set to boot from network once by pressing
+reset for 15 seconds while powering on.
+
+## Setup dnsmasq
 
 Setup `dnsmasq` to provide DHCP and TFTP, so your RouterBoard can boot via
-BOOTP. Boot images can be obtained either by extracting them from
-`netinstall.exe`, or alternatively, some can be downloaded from the
-[merlinthemagic/MTM-Mikrotik] repo.
+BOOTP. Boot images can be obtained either by [extracting them from
+`netinstall.exe`], or alternatively, some can be downloaded from the
+unaffiliated [merlinthemagic/MTM-Mikrotik] repo.
 
-Provide the path to the firmware you want to install in pyNetinstall's
-`config.ini` (searched in the current working directory). A custom default
-configuration script can be provided as well:
+[merlinthemagic/MTM-Mikrotik]: https://github.com/merlinthemagic/MTM-Mikrotik/tree/master/Docs/Examples/TFTP-Images
+[extracting them from `netinstall.exe`]: #extracting-boot-images
+
+Below is a sample dnsmasq configuration. Depending on the CPU architecture of
+your RouterBoard, a different boot file must be used. CPU architectures can be
+differentiated through the vendor class identifier sent with the DHCP request.
+
+```
+interface=eth0
+
+dhcp-range=10.0.0.101,10.0.0.200,10m
+dhcp-boot=vendor:Mips_boot,netinstall.mips
+dhcp-boot=vendor:MMipsBoot,netinstall.mmips
+dhcp-boot=vendor:ARM__boot,netinstall.arm32
+dhcp-boot=vendor:ARM64__boot,netinstall.arm64
+
+enable-tftp
+tftp-root=/var/ftpd
+tftp-no-blocksize
+```
+
+## Using the default plugin
+
+pyNetinstall includes a simple plugin that serves a single firmware and
+optionally a single configuration file.
+
+The default plugin reads the `firmware` and `config` parameters from
+`pynetinstall.ini`. To disable uploading the config file, just remove the line
+from `pynetinstall.ini`.
 
 ```
 [pynetinstall]
@@ -43,34 +86,52 @@ firmware=<PATH_TO_ROUTEROS_NPK>
 config=<PATH_TO_CONFIG_RSC>
 ```
 
-<!--
-By setting `plugin=<python_module>:<a_class>` in `config.ini`, you can create a
-custom Python module for dynamically fetching different configuration files by
-matching the MAC address of the connected RouterBoard. The module will be
-searched for in Python's path ($PWD, $PATH or $PYTHONPATH). This is not well
-documented; please see the source at `pynetinstall/plugins/simple.py`.
+## Providing a custom plugin
 
-More information on setting up dnsmasq can be obtained from here:
-https://openwrt.org/toh/mikrotik/common#netboot_of_openwrt_uses_dhcpbootptftp
--->
+By writing a small python module, the served firmware and configuration file can
+be varied at runtime, based on the device connected.
 
-[merlinthemagic/MTM-Mikrotik]: https://github.com/merlinthemagic/MTM-Mikrotik/tree/master/Docs/Examples/TFTP-Images
-
-Below is a sample dnsmasq configuration. Depending on the CPU architecture of
-your RouterBoard, a different boot file must be used. You can differentiate
-architectures through the vendor class identifier sent with the DHCP request.
+To load a custom plugin, the `plugin` parameter should be defined in
+`pynetinstall.ini`. It expects the name of a Python module, a colon, and the
+name of a class. The module will be searched for in Python's path ($PWD, $PATH
+or $PYTHONPATH). The class is loaded once on startup and reused for each
+flashing operation.
 
 ```
-interface=eth0
+[pynetinstall]
+plugin=<PYTHON_MODULE>:<CLASS_NAME>
+# additional keys or sections defined by the plugin
+```
 
-dhcp-range=10.0.0.101,10.0.0.200,10m
-dhcp-boot=vendor:MMipsBoot,mmips_boot_6.42.5
-dhcp-boot=vendor:ARM__boot,arm_boot_6.42.5
-dhcp-boot=vendor:Mips_boot,Mips_boot_netinstall_6.48
+Such a plugin is simply a python file, containing a class that implements
+`get_files()`. Implementing `__init__()` is optional and only required if access
+to `pynetinstall.ini` is needed through the passed [ConfigParser] object.
+Exceptions raised during `__init__()` will result in pyNetinstall exiting.
 
-enable-tftp
-tftp-root=/var/ftpd
-tftp-no-blocksize
+`get_files()` should return a tuple (firmware, config). Each element may be a
+path (string), HTTP(s) URL (string), or an opened file handle. Additionally,
+config may be `None` if no default configuration is desired. If firmware is
+`None`, an error is assumed and the current flashing process is aborted.
+`get_files()` is passed an InterfaceInfo object, which contains information on
+the connected RouterBoard.
+
+[ConfigParser]: https://docs.python.org/3/library/configparser.html#configparser.ConfigParser
+
+```
+class Plugin:
+    def __init__(self, config: ConfigParser):
+        ...
+
+    def get_files(self, info: InterfaceInfo):
+        ...
+        # info.mac.hex(':') = MAC address
+        # info.model        = model name
+        # info.arch         = CPU architecture
+        # info.min_os       = oldest supported rOS version
+        # info.lic_id       = installed license id
+        # info.lic_key      = installed license key
+
+        return firmware, configuration_or_None
 ```
 
 ## Extracting Boot Images
@@ -82,22 +143,30 @@ describes the Linux CLI version, but the same techniques should work on the
 Windows GUI version as well.
 
 1. **Download `netinstall-<version>.tar.gz`**  
-   You can use the latest version that is linked in the [Downloads page] General
-   section for all RouterOS versions.
+   The latest version that is linked in the [Downloads page] General section
+   should work fine for all RouterOS versions. The [Download Archive] has links
+   to older versions. <!-- for rOS 6.x no links are given, but the URLs follow
+   the same schema as for 7.x -->
 
 2. **Start `netinstall-cli`**  
    `sudo ./netinstall-cli -a 127.0.0.2 netinstall-cli`  
 
-3. **Run `dhtest`**  
+3. **Install `dhtest`**  
+   For Fedora, openSuse and RHEL packages are in the default repositories. On
+   Debian or Ubuntu download the [dhtest sources] and compile them with `make`.
+
+4. **Run `dhtest`**  
    `sudo dhtest -T 5 -o ARM64__boot -i lo`  
    This will set up extraction of the arm64/aarch64 image. Other valid options
-   are `Mips_boot`, `MMipsBoot`, `Powerboot`, `e500_boot`==`e500sboot`,
+   are `Mips_boot`, `MMipsBoot`, `Powerboot`, `e500_boot`, `e500sboot`,
    `440__boot`, `tile_boot`, `ARM__boot` and `ARM64__boot`.
+   <!-- Note: e500_boot and e500sboot seem to return the same file. -->
 
-4. **Download the image**  
+5. **Download the image**  
    `curl tftp://127.0.0.1/linux.arm > netinstall.arm64`  
    The filename is always `linux.arm`. Restart `netinstall-cli` and run `dhtest`
    agagin before downloading another image.
 
 [Downloads page]: https://mikrotik.com/download
 [Download Archive]: https://mikrotik.com/download/archive
+[dhtest sources]: https://github.com/saravana815/dhtest
