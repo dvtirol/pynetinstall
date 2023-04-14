@@ -16,11 +16,11 @@ servers; these services should be handled by `dnsmasq`.
 
 ## Usage
 
-`python -m pynetinstall [-c CONFIG] [-i INTERFACE] [-l LOGGING] [-1] [-v|-vv] [-h]`
+`python -m pynetinstall [-c CONFIG] [-i INTERFACE] [-v]`
 
 *-c CONFIG*: Path to the configuration file. Defaults to `/etc/pynetinstall.ini`.  
 *-i INTERFACE*: Ethernet interface to listen on. Defaults to `eth0`.  
-*-l LOGGING*: [Python logging configuration].  
+*-l LOGGING*: [Python logging configuration]. Defaults to stderr.  
 *-1*: Enable one-shot mode (exit after flashing once).  
 *-v*: Increase verbosity. Default is errors and warnings.  
 *-h*: Display help and exit.
