@@ -11,8 +11,12 @@ interfacing pyNetinstall with existing data center infrastructure management
 systems, uploading individual firmware and configuration per device based on MAC
 address, model type and serial number.
 
+It is possible to run pyNetinstall in a Container on a Routerboard itself,
+providing a self-contained, (nearly) zero-touch deployment station.
+
 Unlike the official tooling, pyNetinstall does not include DHCP and TFTP
-servers; these services should be handled by `dnsmasq`.
+servers; these services should be handled by e.g. `dnsmasq` or the one included
+with RouterOS.
 
 ## Usage
 
@@ -43,7 +47,20 @@ The boot image itself is loaded by the RouterBOOT bootloader using BOOTP/DHCP
 and TFTP. Usually, RouterBoards can be set to boot from network once by pressing
 reset for 15 seconds while powering on.
 
-## Setup dnsmasq
+## Deploy on Mikrotik
+
+By building a small [container] and setting up [DHCP] and [TFTP], pyNetinstall
+can be deployed directly on another RouterBoard running RouterOS 7.4 or higher.
+
+This process is a relatively involved; see [pyNetinstall on RouterOS] for an
+example.
+
+[container]: https://help.mikrotik.com/docs/display/ROS/Container
+[DHCP]: https://help.mikrotik.com/docs/display/ROS/DHCP#DHCP-DHCPServer
+[TFTP]: https://help.mikrotik.com/docs/display/ROS/TFTP
+[pyNetinstall on RouterOS]: docs/routeros.md
+
+## Deploy on Linux (dnsmasq)
 
 Setup `dnsmasq` to provide DHCP and TFTP, so your RouterBoard can boot via
 BOOTP. Boot images can be obtained either by [extracting them from
