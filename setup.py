@@ -13,6 +13,7 @@ setup(
         "Programming Language :: Python :: 3.9",
         "Operating System :: POSIX :: Linux",
         "Intended Audience :: System Administrators",
+        "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     ],
     entry_points={
         "console_scripts": ["pynetinstall = pynetinstall.__main__"]

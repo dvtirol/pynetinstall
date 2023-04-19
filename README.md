@@ -200,3 +200,10 @@ This project is based on the wonderful reverse engineering work of
 [merlinthemagic].
 
 [merlinthemagic]: https://github.com/merlinthemagic/MTM-Mikrotik/tree/master/Src/Tools/NetInstall
+
+## License
+
+Copyright 2022-2023 DVT - Daten-Verarbeitung Tirol GmbH. Made available under
+the terms of the [GNU General Public License, version 3].
+
+[GNU General Public License, version 3]: LICENSE
