@@ -1,9 +1,15 @@
 from setuptools import setup
+from pathlib import Path
+
+this_directory = Path(__file__).parent
+long_description = (this_directory / "README.md").read_text()
 
 setup(
     name="pynetinstall",
-    version="1.0",
+    version="1.0.1",
     description="Module to perform Mikrotik Routerboard Netinstall via Etherboot",
+    long_description=long_description,
+    long_description_content_type='text/markdown',
     url="https://github.com/dvtirol/pynetinstall",
     author="Daten-Verarbeitung-Tirol GmbH",
     author_email="netz@tirol.gv.at",
