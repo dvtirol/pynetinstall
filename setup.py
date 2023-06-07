@@ -6,7 +6,7 @@ long_description = (this_directory / "README.md").read_text()
 
 setup(
     name="pynetinstall",
-    version="1.0.1",
+    version="1.0.2",
     description="Module to perform Mikrotik Routerboard Netinstall via Etherboot",
     long_description=long_description,
     long_description_content_type='text/markdown',
