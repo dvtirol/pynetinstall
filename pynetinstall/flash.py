@@ -153,6 +153,21 @@ class Flasher:
         except Exception as e:
             raise FatalError(f"Could not load {plug.__module__}.{plug.__name__}: {e} ({type(e).__name__})")
 
+    def verify_npk(self, info: InterfaceInfo) -> None:
+        """
+        Checks that the RouterOS file the plugin returned is valid to avoid
+        formatting the Routerboard without being able to install an OS.
+        """
+        npk, _ = self.plugin.get_files(info)
+        if npk is None:
+            raise AbortFlashing("Verification failed: Plugin did not return RouterOS.")
+
+        npk_file, _, _ = self.resolve_file_data(npk)
+        if npk_file.read(4) != b'\x1e\xf1\xd0\xba': # npk magic bytes 0x1EF1D0BA (via binwalk)
+            raise AbortFlashing("Verification failed: RouterOS file does not look like an NPK.")
+
+        npk_file.close()
+
     def write(self, data: bytes) -> None:
         """
         Write the `data` to the UDPConnection
@@ -451,6 +466,7 @@ class FlashInterface:
         """
         flash = Flasher(self.connection, config_file=self.config_file, logger=self.logger)
         interface = self.connection.get_interface_info()
+        flash.verify_npk(interface)
         flash.run(interface)
         self.connection.close()
 
@@ -467,6 +483,7 @@ class FlashInterface:
                     while not interface:
                         interface = self.connection.get_interface_info()
                     self.logger.info(f"Device found! mac={interface.mac.hex(':')}, model={interface.model}, arch={interface.arch}")
+                    flash.verify_npk(interface)
                     flash.run(interface)
                 except AbortFlashing as e:
                     self.logger.error(f"Flashing failed: {e}")
