@@ -184,7 +184,7 @@ Windows GUI version as well.
    are `Mips_boot`, `MMipsBoot`, `Powerboot`, `e500_boot`, `e500sboot`,
    `440__boot`, `tile_boot`, `ARM__boot` and `ARM64__boot`.
    <!-- Note: e500_boot and e500sboot seem to return the same file. -->
-   For PXE boot systems (i.e. x86\_64), the architecture needs to be passed in
+   For PXE boot systems (i.e. x86\_64), the [architecture] needs to be passed in
    DHCP option 93: `sudo dhtest -T 5 -o "PXEClient" -i lo -c 93,hex,0007`
 
 5. **Download the image**  
@@ -195,6 +195,7 @@ Windows GUI version as well.
 [Downloads page]: https://mikrotik.com/download
 [Download Archive]: https://mikrotik.com/download/archive
 [dhtest sources]: https://github.com/saravana815/dhtest
+[architecture]: https://www.rfc-editor.org/rfc/rfc4578#section-2.1
 
 ## Acknowledgements
 
