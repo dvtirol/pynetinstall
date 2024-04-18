@@ -63,4 +63,5 @@ class Plugin:
            If firmware is None, an error is assumed. If config is None, only
            the firmware will be installed.
         """
-        return open(self.firmware, "rb"), open(self.default_config, "rb")
+        default_config_h = open(self.default_config, "rb") if self.default_config else None
+        return open(self.firmware, "rb"), default_config_h
