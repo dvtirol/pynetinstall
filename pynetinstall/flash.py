@@ -359,8 +359,8 @@ class Flasher:
             self.logger.info(f"Uploading {rsc_file_name}")
             self.do_file(rsc_file, rsc_file_size, rsc_file_name)
 
-        self.do(b"", b"RETR")
-        self.logger.debug("Done with the Configuration File")
+            self.do(b"", b"RETR")
+            self.logger.debug("Done with the Configuration File")
 
     def resolve_file_data(self, data) -> tuple[BufferedReader or HTTPResponse, str, int]:
         """
