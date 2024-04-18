@@ -340,7 +340,7 @@ class Flasher:
         # Send the .npk file
         npk_file, npk_file_name, npk_file_size = self.resolve_file_data(npk)
         try:
-            self.do(bytes(f"FILE\n{npk_file_name}\n{str(npk_file_size)}\n", "utf-8"), b"RETR")
+            self.do(bytes(f"FILE\nrouteros.npk\n{str(npk_file_size)}\n", "utf-8"), b"RETR")
         except AbortFlashing:
             # NOTE: it appears that not all devices send a 'RETR' response here, so we ignore it.
             pass
