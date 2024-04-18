@@ -303,7 +303,7 @@ class Flasher:
             self.read() # should be b"RETR"
 
             file_pos += len(data)
-            file_percent = round(100*file_pos/max_pos)
+            file_percent = round(100*file_pos/(max_pos or 1))
             if file_percent >= next_log and max_pos > 100000: # 100kB
                 self.logger.info(f"    {file_name}: {file_percent}%")
                 next_log += 10
