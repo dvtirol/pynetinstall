@@ -333,8 +333,10 @@ class Flasher:
         Sends the npk and the rsc file to the Connection using the do_files() Function
         It requests both files from the get_files() Function of the Plugin
         """
-        files = self.plugin.get_files(self.info)
-        for npk in files[:-1]:
+        *npks, rsc = self.plugin.get_files(self.info)
+        if not all(npks):
+            raise AbortFlashing("Plugin did not return RouterOS or an additional package is 'None'.")
+        for npk in npks:
             # Send the .npk file
             npk_file, npk_file_name, npk_file_size = self.resolve_file_data(npk)
             try:
