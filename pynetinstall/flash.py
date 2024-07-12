@@ -158,7 +158,7 @@ class Flasher:
         Checks that the RouterOS file the plugin returned is valid to avoid
         formatting the Routerboard without being able to install an OS.
         """
-        npk = self.plugin.get_files(info)[0]
+        npk, *_ = self.plugin.get_files(info)
         if npk is None:
             raise AbortFlashing("Verification failed: Plugin did not return RouterOS.")
 
