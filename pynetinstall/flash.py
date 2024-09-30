@@ -353,7 +353,6 @@ class Flasher:
         self.logger.debug("Done with the Firmware")
 
         # Send the initial config file. routerOS expects filename to be autorun.scr.
-        rsc = files[-1]
         if rsc:
             rsc_file, rsc_file_name, rsc_file_size = self.resolve_file_data(rsc)
             self.do(bytes(f"FILE\nautorun.scr\n{str(rsc_file_size)}\n", "utf-8"), b"RETR")
