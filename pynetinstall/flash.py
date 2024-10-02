@@ -158,7 +158,7 @@ class Flasher:
         Checks that the RouterOS file the plugin returned is valid to avoid
         formatting the Routerboard without being able to install an OS.
         """
-        npk, _ = self.plugin.get_files(info)
+        npk, *_ = self.plugin.get_files(info)
         if npk is None:
             raise AbortFlashing("Verification failed: Plugin did not return RouterOS.")
 
@@ -237,7 +237,7 @@ class Flasher:
         self.do(b"FILE\n", b"WTRM")
         # Tell the board that it can now reboot and load the files
         self.logger.debug("Rebooting the Board")
-        self.do(b"TERM\nInstallation successful\n")
+        self.do(b"TERM\n")
 
         self.logger.info(f"{info.mac.hex(':')} was successfully flashed.")
         return
@@ -327,27 +327,29 @@ class Flasher:
             else:
                 # main reason why flashing is so slow but without this sleep state errors occur
                 time.sleep(0.005)
-        
+
     def do_files(self) -> None:
         """
         Sends the npk and the rsc file to the Connection using the do_files() Function
         It requests both files from the get_files() Function of the Plugin
         """
-        npk, rsc = self.plugin.get_files(self.info)
-        if npk is None:
-            raise AbortFlashing("Plugin did not return RouterOS.")
+        *npks, rsc = self.plugin.get_files(self.info)
+        if not all(npks):
+            raise AbortFlashing("Plugin did not return RouterOS or an additional package is 'None'.")
+        for npk in npks:
+            # Send the .npk file
+            npk_file, npk_file_name, npk_file_size = self.resolve_file_data(npk)
+            try:
+                self.do(bytes(f"FILE\n{npk_file_name}\n{str(npk_file_size)}\n", "utf-8"), b"RETR")
+            except AbortFlashing:
+                # NOTE: it appears that not all devices send a 'RETR' response here, so we ignore it.
+                pass
+            self.logger.info(f"Uploading {npk_file_name}")
+            self.do_file(npk_file, npk_file_size, npk_file_name)
 
-        # Send the .npk file
-        npk_file, npk_file_name, npk_file_size = self.resolve_file_data(npk)
-        try:
-            self.do(bytes(f"FILE\n{npk_file_name}\n{str(npk_file_size)}\n", "utf-8"), b"RETR")
-        except AbortFlashing:
-            # NOTE: it appears that not all devices send a 'RETR' response here, so we ignore it.
-            pass
-        self.logger.info(f"Uploading {npk_file_name}")
-        self.do_file(npk_file, npk_file_size, npk_file_name)
+            # wait before sending the next file
+            self.do(b"", b"RETR")
 
-        self.do(b"", b"RETR")
         self.logger.debug("Done with the Firmware")
 
         # Send the initial config file. routerOS expects filename to be autorun.scr.
