@@ -161,15 +161,27 @@ class Plugin:
 
 You will need to aquire the boot images that the official netinstall tool uses.
 These are not included as they are not licensed for re-distribution. However, it
-is fairly easy to extract them from the Mikrotik's Netinstall tool. This guide
-describes the Linux CLI version, but the same techniques should work on the
-Windows GUI version as well.
+is fairly easy to extract them from the Mikrotik's Netinstall tool.
 
-1. **Download `netinstall-<version>.tar.gz`**  
+1. **Download `netinstall-<version>.zip` for Windows and extract it**  
    The latest version that is linked in the [Downloads page] General section
    should work fine for all RouterOS versions. The [Download Archive] has links
    to older versions. <!-- for rOS 6.x no links are given, but the URLs follow
-   the same schema as for 7.x -->
+   the same schema as for 7.x. Both 32 and 64 bit versions should work. -->
+
+2. **Install the `pefile` and `pyelftools` Python packages**  
+   `pip install --user pefile pyelftools`  
+
+3. **Extract the images**  
+   `./docs/extract_bootimages.py netinstall64.exe`  
+   This will extract all images into the current directory.
+
+Alternatively, it is possible to interactively extract images by running
+netinstall-cli for Linux. This method was less reliable in our testing.
+
+1. **Download `netinstall-<version>.tar.gz`**  
+   The latest version that is linked in the [Downloads page] General section
+   should work fine for all RouterOS versions.
 
 2. **Start `netinstall-cli`**  
    `sudo ./netinstall-cli -a 127.0.0.2 netinstall-cli`  
