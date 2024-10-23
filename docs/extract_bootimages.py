@@ -21,6 +21,7 @@ netinstall_exe = sys.argv[1]
 
 pe = pefile.PE(netinstall_exe)
 mem = pe.get_memory_mapped_image()
+version = next(fi for fi in pe.FileInfo[0] if fi.Key == b'StringFileInfo').StringTable[0].entries[b'ProductVersion'].decode()
 rcdata = next(e for e in pe.DIRECTORY_ENTRY_RESOURCE.entries if e.struct.Id == pefile.RESOURCE_TYPE["RT_RCDATA"])
 for entry in rcdata.directory.entries:
     resource = entry.directory.entries[0].data.struct
@@ -45,10 +46,10 @@ for entry in rcdata.directory.entries:
             is_440 = any(b"-440" in c for c in candidates)
             if is_e500: arch = f"PPCe500"
             if is_440: arch = f"PPC440"
-        with open(f"netinstall-{resid}-{arch}.elf", "wb") as f:
+        with open(f"netinstall-{version}-id{resid}-{arch}.elf", "wb") as f:
             f.write(elfdata)
     elif elfdata[:2] == b'MZ':
-        with open(f"netinstall-{resid}-x86.pxe", "wb") as f:
+        with open(f"netinstall-{version}-id{resid}-x86.pxe", "wb") as f:
             f.write(elfdata)
     else:
         print(f"unexpected magic 0x{elfdata[:4].hex()} ({elfdata[:4]})")
