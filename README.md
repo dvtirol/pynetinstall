@@ -163,6 +163,9 @@ You will need to aquire the boot images that the official netinstall tool uses.
 These are not included as they are not licensed for re-distribution. However, it
 is fairly easy to extract them from the Mikrotik's Netinstall tool.
 
+**Note**: You must use at least the netinstall version that a device was shipped
+with. Check `/system routerboard print` -> `factory-firmware` if unsure.
+
 1. **Download `netinstall-<version>.zip` for Windows and extract it**  
    The latest version that is linked in the [Downloads page] General section
    should work fine for all RouterOS versions. The [Download Archive] has links
@@ -176,38 +179,8 @@ is fairly easy to extract them from the Mikrotik's Netinstall tool.
    `./docs/extract_bootimages.py netinstall64.exe`  
    This will extract all images into the current directory.
 
-Alternatively, it is possible to interactively extract images by running
-netinstall-cli for Linux. This method was less reliable in our testing.
-
-1. **Download `netinstall-<version>.tar.gz`**  
-   The latest version that is linked in the [Downloads page] General section
-   should work fine for all RouterOS versions.
-
-2. **Start `netinstall-cli`**  
-   `sudo ./netinstall-cli -a 127.0.0.2 netinstall-cli`  
-
-3. **Install `dhtest`**  
-   For Fedora, openSuse and RHEL packages are in the default repositories. On
-   Debian or Ubuntu download the [dhtest sources] and compile them with `make`.
-
-4. **Run `dhtest`**  
-   `sudo dhtest -T 5 -o ARM64__boot -i lo`  
-   This will set up extraction of the arm64/aarch64 image. Other valid options
-   are `Mips_boot`, `MMipsBoot`, `Powerboot`, `e500_boot`, `e500sboot`,
-   `440__boot`, `tile_boot`, `ARM__boot` and `ARM64__boot`.
-   <!-- Note: e500_boot and e500sboot seem to return the same file. -->
-   For PXE boot systems (i.e. x86\_64), the [architecture] needs to be passed in
-   DHCP option 93: `sudo dhtest -T 5 -o "PXEClient" -i lo -c 93,hex,0007`
-
-5. **Download the image**  
-   `curl tftp://127.0.0.1/linux.arm > netinstall.arm64`  
-   The filename is always `linux.arm`. Restart `netinstall-cli` and run `dhtest`
-   agagin before downloading another image.
-
 [Downloads page]: https://mikrotik.com/download
 [Download Archive]: https://mikrotik.com/download/archive
-[dhtest sources]: https://github.com/saravana815/dhtest
-[architecture]: https://www.rfc-editor.org/rfc/rfc4578#section-2.1
 
 ## Acknowledgements
 
