@@ -22,7 +22,7 @@ class Plugin:
     Methods
     -------
 
-    get_files(info) -> tuple[BufferedReader, BufferedReader]
+    get_files(info) -> tuple[str]
         Get a Reader object of the npk and the rsc file
 
     Raises
@@ -36,6 +36,7 @@ class Plugin:
     def __init__(self, config: ConfigParser):
         self.firmware = config.get("pynetinstall", "firmware", fallback=None)
         self.default_config = config.get("pynetinstall", "config", fallback=None)
+        additional_packages = config.get("pynetinstall", "additional_packages", fallback="")
 
         if not self.firmware:
             raise KeyError(f"[pynetinstall]firmware= is not defined in the configuration")
@@ -43,8 +44,12 @@ class Plugin:
             raise ValueError(f"The firmware file {self.firmware!r} does not exist")
         if self.default_config and not os.path.exists(self.default_config):
             raise ValueError(f"The config file {self.default_config!r} does not exist")
+        self.additional_packages = additional_packages.splitlines()
+        for pkg in self.additional_packages:
+            if not os.path.exists(pkg):
+                raise ValueError(f"The package {pkg} does not exist")
 
-    def get_files(self, info: InterfaceInfo) -> tuple[BufferedReader, BufferedReader]:
+    def get_files(self, info: InterfaceInfo) -> tuple[str]:
         """
         Searches for the path of the .npk and .rsc files in the config
 
@@ -57,11 +62,8 @@ class Plugin:
         Returns
         -------
 
-         - (BufferedReader or str or None, BufferedReader or str or None):
-           Tuple of the path or URL to the .npk and the .rsc file
-           (ROUTEROS.npk, CONFIG.rsc), or a file handle to them.
+         - Tuple of the path to the .npk files and .rsc config
            If firmware is None, an error is assumed. If config is None, only
            the firmware will be installed.
         """
-        default_config_h = open(self.default_config, "rb") if self.default_config else None
-        return open(self.firmware, "rb"), default_config_h
+        return self.firmware, *self.additional_packages, self.default_config

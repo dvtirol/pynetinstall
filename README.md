@@ -95,12 +95,17 @@ optionally a single configuration file.
 
 The default plugin reads the `firmware` and `config` parameters from
 `pynetinstall.ini`. To disable uploading the config file, just remove the line
-from `pynetinstall.ini`.
+from `pynetinstall.ini`. Additional packages can be specified one per line, each
+indented by some spaces.
 
 ```
 [pynetinstall]
 firmware=<PATH_TO_ROUTEROS_NPK>
 config=<PATH_TO_CONFIG_RSC>
+additional_packages=
+    <ADDITIONAL_PACKAGE>
+    <ADDITIONAL_PACKAGE>
+    <ADDITIONAL_PACKAGE>
 ```
 
 ## Providing a custom plugin
