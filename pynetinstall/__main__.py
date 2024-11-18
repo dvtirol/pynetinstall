@@ -14,8 +14,8 @@ parser.add_argument("-v", "--verbose", action="count", default=0, help="enable v
 parser.add_argument("-1", "--oneshot", action="store_true", help="exit after flashing once")
 args = parser.parse_args()
 
-# default to ERROR+WARNING, each -v increases the verbosity (INFO, DEBUG)
-levels = sorted(logging._levelToName.keys(), reverse=True)
+# default to ERROR+WARNING, each -v increases the verbosity (INFO, DEBUG). must not set to NOTSET (0), or logger gets disabled.
+levels = sorted([e for e in logging._levelToName.keys() if e > 0], reverse=True)
 verbosity = levels[min(len(levels)-1, levels.index(logging.WARNING) + args.verbose)]
 if not args.logging:
     args.logging = os.path.join(os.path.dirname(__file__), "logging.ini")
