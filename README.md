@@ -94,9 +94,11 @@ pyNetinstall includes a simple plugin that serves a single firmware and
 optionally a single configuration file.
 
 The default plugin reads the `firmware` and `config` parameters from
-`pynetinstall.ini`. To disable uploading the config file, just remove the line
-from `pynetinstall.ini`. Additional packages can be specified one per line, each
-indented by some spaces.
+`pynetinstall.ini`. To disable uploading a config file and use MikroTik's
+default config instead, just remove the line from `pynetinstall.ini`. To not
+upload any config at all (and configure the device through MAC-Telnet/MAC-Winbox
+manually afterwards), specify a config file containing a single newline char.
+Additional packages can be specified one per line, each indented by some spaces.
 
 ```
 [pynetinstall]
