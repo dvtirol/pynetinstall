@@ -1,10 +1,13 @@
 import os
 import sys
+import signal
 import logging
 import argparse
 import logging.config
 
 from pynetinstall.flash import FlashInterface, FatalError, AbortFlashing
+
+signal.signal(signal.SIGTERM, lambda sig, _: sys.exit(0))
 
 parser = argparse.ArgumentParser(__package__)
 parser.add_argument("-c", "--config", default="/etc/pynetinstall.ini", help="set location of configuration file")
