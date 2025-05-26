@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import signal
 import logging
@@ -11,7 +12,7 @@ signal.signal(signal.SIGTERM, lambda sig, _: sys.exit(0))
 
 parser = argparse.ArgumentParser(__package__)
 parser.add_argument("-c", "--config", default="/etc/pynetinstall.ini", help="set location of configuration file")
-parser.add_argument("-i", "--interface", default="eth0", help="ethernet interface to listen on")
+parser.add_argument("-i", "--interface", default="eth0", help="MAC or name of ethernet interface (name supported on Linux only)")
 parser.add_argument("-l", "--logging", default=None, help="python logging configuration")
 parser.add_argument("-v", "--verbose", action="count", default=0, help="enable verbose output")
 parser.add_argument("-1", "--oneshot", action="store_true", help="exit after flashing once")
@@ -24,8 +25,15 @@ if not args.logging:
     args.logging = os.path.join(os.path.dirname(__file__), "logging.ini")
 logging.config.fileConfig(args.logging)
 
+is_mac = re.fullmatch(r"([0-9a-f]{2}[:]?){6}", args.interface, re.I)
+argdict = {
+    'mac_address' if is_mac else 'interface_name': args.interface,
+    'config_file': args.config,
+    'log_level': verbosity,
+}
+
 try:
-    fl_dev = FlashInterface(args.interface, args.config, log_level=verbosity)
+    fl_dev = FlashInterface(**argdict)
 
     if args.oneshot:
         fl_dev.flash_once()

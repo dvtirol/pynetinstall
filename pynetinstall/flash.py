@@ -440,17 +440,21 @@ class FlashInterface:
     flash_until_stopped() -> None
         Run flash until someone stops the program
     """
-    def __init__(self, interface_name : str = "eth0", config_file : str = "config.ini", log_level: int = logging.INFO) -> None:
+    def __init__(self, interface_name : str = None, mac_address : str = None, config_file : str = "config.ini", log_level: int = logging.INFO) -> None:
         """
         Initialize a new FlashInterface
 
-        Create a new Logger instance and a new `connection` to wait for new Interfaces
+        Create a new Logger instance and a new `connection` to wait for new
+        Interfaces. One of `interface_name` or `mac_address` must be provided.
 
         Argument
         --------
 
         interface_name : str
-            The name of the Interface to listen on (default: "eth0")
+            The name of the interface to listen on
+
+        mac_address : str|bytes
+            The mac address of the interface to listen on
 
         log_level : int
             What level should be logged by the `logger`
@@ -458,9 +462,9 @@ class FlashInterface:
         self.logger = Logger(log_level)
         self.config_file = config_file
         try:
-            self.connection = UDPConnection(logger=self.logger, interface_name=interface_name)
-        except OSError as e:
-            raise FatalError(f"{e} ({interface_name})")
+            self.connection = UDPConnection(logger=self.logger, interface_name=interface_name, mac_address=mac_address)
+        except (OSError, ValueError) as e:
+            raise FatalError(f"{e} ({interface_name or mac_address})")
 
     def flash_once(self) -> None:
         """

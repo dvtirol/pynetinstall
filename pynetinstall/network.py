@@ -42,7 +42,7 @@ class UDPConnection(socket.socket):
     """
     mac: bytes
 
-    def __init__(self, addr: tuple = ("0.0.0.0", 5000), interface_name: str = "eth0", error_repeat: int = 25, logger: Logger = None, timeout: int = 60,
+    def __init__(self, addr: tuple = ("0.0.0.0", 5000), interface_name: str = None, mac_address: str = None, error_repeat: int = 25, logger: Logger = None, timeout: int = 60,
                  family: socket.AddressFamily or int = socket.AF_INET, kind: socket.SocketKind or int = socket.SOCK_DGRAM, *args, **kwargs) -> None:
         """
         Initialize a new UDPConnection
@@ -51,20 +51,24 @@ class UDPConnection(socket.socket):
          - SO_REUSEADDR: To use the Address more than one time
          - SO_BROADCAST: To send Broadcast Messages
 
+        Either `interface_name` or `mac_address` must be specified.
+
         Arguments
         ---------
 
         addr : tuple
             The Address Pair on which the socket will be binded (default: ("0.0.0.0", 5000))
-        interface_name : str
-            The name of the Interface where the Interface is connected to (default: "eth0")
+        interface_name : optional[str]
+            The name of the interface where the Interface is connected to. Linux only.
+        mac_address : optional[str|bytes]
+            The mac address of the interface where the Interface is connected to.
+            Either supplied as an ASCII string of colon seperated hexadecimal digits or as raw bytes.
         error_repeat : int
             How often a function is repeated until it gets the right response or it raises an error (default: 25)
         timeout : int
             Time in seconds to wait for responses from devices before aborting (default: 60)
         """
         super().__init__(family, kind, *args, **kwargs)
-        self._interface_name = interface_name
         self.logger = logger
         self.MAX_ERRORS = error_repeat
         self.MAX_BYTES_RECV = 1024
@@ -72,16 +76,24 @@ class UDPConnection(socket.socket):
         self.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
         self.bind(addr)
         self.settimeout(timeout)
+        if interface_name:
+            self.mac = self._get_source_mac(interface_name)
+        elif mac_address:
+            if isinstance(mac_address, str):
+                mac_address = bytes.fromhex(mac_address.replace(':', ''))
+            self.mac = mac_address
+        else:
+            raise ValueError("neither interface_name nor mac_address provided")
         self.logger.debug(f"A New UDPConnection is created on {addr}")
-        self._get_source_mac()
 
-    def _get_source_mac(self) -> None:
+    def _get_source_mac(self, interface_name) -> None:
         """
         This function gets the MAC-Address of the interface defined in `interface_name`
         """
-        arg = struct.pack('256s', bytes(self._interface_name, 'utf-8')[:15])
-        self.mac = fcntl.ioctl(self.fileno(), 0x8927, arg)[18:24]  # 0x8927: SIOCGIFHWADDR
-        self.logger.debug(f"The MAC-Address of the Interface {self._interface_name} is {self.mac}")
+        arg = struct.pack('256s', bytes(interface_name, 'utf-8')[:15])
+        mac = fcntl.ioctl(self.fileno(), 0x8927, arg)[18:24]  # 0x8927: SIOCGIFHWADDR
+        self.logger.debug(f"The MAC-Address of the Interface {interface_name} is {mac}")
+        return mac
 
     def read(self, state: list, _repeated = 0) -> tuple[bytes, list] or None:
         """

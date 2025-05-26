@@ -23,11 +23,14 @@ with RouterOS.
 `python -m pynetinstall [-c CONFIG] [-i INTERFACE] [-v]`
 
 *-c CONFIG*: Path to the configuration file. Defaults to `/etc/pynetinstall.ini`.  
-*-i INTERFACE*: Ethernet interface to listen on. Defaults to `eth0`.  
+*-i INTERFACE*: MAC address or name of network interface. Defaults to `eth0`.  
 *-l LOGGING*: [Python logging configuration]. Defaults to stderr.  
 *-1*: Enable one-shot mode (exit after flashing once).  
 *-v*: Increase verbosity. Default is errors and warnings.  
 *-h*: Display help and exit.
+
+Inferring the MAC address though the interface name is only supported on Linux.
+When run on other operating systems, `-i MAC_ADDRESS` must be provided.
 
 [Python logging configuration]: https://docs.python.org/3/library/logging.config.html#logging-config-fileformat
 
