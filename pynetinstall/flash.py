@@ -163,8 +163,19 @@ class Flasher:
             raise AbortFlashing("Verification failed: Plugin did not return RouterOS.")
 
         npk_file, _, _ = self.resolve_file_data(npk)
-        if npk_file.read(4) != b'\x1e\xf1\xd0\xba': # npk magic bytes 0x1EF1D0BA (via binwalk)
+        header = npk_file.read(40)
+        if header[0:4] != b'\x1e\xf1\xd0\xba': # npk magic bytes 0x1EF1D0BA (via binwalk)
             raise AbortFlashing("Verification failed: RouterOS file does not look like an NPK.")
+
+        package = header[0x14:0x24].rstrip(b'\x00').decode()
+        if package != "system":
+            raise AbortFlashing("Verification failed: First NPK file must be 'system' (RouterOS), extra package {package!r} supplied instead.")
+
+        # extract version number. release_type is lowercase ASCII letter 'a'=alpha, 'b'=beta, 'c'=candidate, 'f'=final, other values are plain uint8
+        patch, release_type, minor, major = header[0x24:0x28]
+        if map(int, info.min_os.split(".")) > (major, minor, patch):
+            release = {97: 'alpha', 98: 'beta', 99: 'rc', 102: ''}.get(release_type, '<unknown release type>')
+            raise AbortFlashing(f"Verification failed: Tried to install RouterOS {major}.{minor}.{release}{patch}, but device requires at least {info.min_os}.")
 
         npk_file.close()
 
