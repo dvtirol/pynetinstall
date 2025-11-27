@@ -1,9 +1,20 @@
 import fcntl
 import socket
 import struct
+import sys
 
 from pynetinstall.log import Logger
 from pynetinstall.interface import InterfaceInfo
+
+# Defensively define IP_PKTINFO constant
+try:
+    IP_PKTINFO = socket.IP_PKTINFO  # Prefer definition from standard library
+except AttributeError:
+    IP_PKTINFO = 8  # Fallback: Linux kernel standard value
+
+# Platform detection - enable this feature only on Linux
+if not sys.platform.startswith('linux'):
+    IP_PKTINFO = None
 
 
 class UDPConnection(socket.socket):
@@ -30,7 +41,7 @@ class UDPConnection(socket.socket):
 
     _get_source_mac() -> None
         Get the `mac` Address of the Raspberry
-    
+
     read(state) -> tuple
         Read data from the Connection
 
@@ -43,7 +54,7 @@ class UDPConnection(socket.socket):
     mac: bytes
 
     def __init__(self, addr: tuple = ("0.0.0.0", 5000), interface_name: str = None, mac_address: str = None, error_repeat: int = 25, logger: Logger = None, timeout: int = 60,
-                 family: socket.AddressFamily or int = socket.AF_INET, kind: socket.SocketKind or int = socket.SOCK_DGRAM, *args, **kwargs) -> None:
+                 family: socket.AddressFamily or int = socket.AF_INET, kind: socket.SocketKind or int = socket.SOCK_DGRAM, bind_ip: str = None, *args, **kwargs) -> None:
         """
         Initialize a new UDPConnection
 
@@ -67,6 +78,8 @@ class UDPConnection(socket.socket):
             How often a function is repeated until it gets the right response or it raises an error (default: 25)
         timeout : int
             Time in seconds to wait for responses from devices before aborting (default: 60)
+        bind_ip : optional[str]
+            Specific IP address to use as source when sending replies (Linux only)
         """
         super().__init__(family, kind, *args, **kwargs)
         self.logger = logger
@@ -76,6 +89,21 @@ class UDPConnection(socket.socket):
         self.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
         self.bind(addr)
         self.settimeout(timeout)
+
+        # Set bind_ip parameter to specify source IP for sending replies
+        self.bind_ip = bind_ip
+        if self.bind_ip and IP_PKTINFO is not None:
+            try:
+                # Enable IP_PKTINFO to get destination information and allow specifying source IP
+                self.setsockopt(socket.IPPROTO_IP, IP_PKTINFO, 1)
+                self.logger.debug(f"IP_PKTINFO enabled for source IP binding: {bind_ip}")
+            except Exception as e:
+                self.logger.error(f"Failed to set IP_PKTINFO: {e}. Source IP binding will not work.")
+                self.bind_ip = None
+        elif self.bind_ip:
+            self.logger.debug(f"Source IP binding requested but not supported on this platform: {bind_ip}")
+            self.bind_ip = None
+
         if interface_name:
             self.mac = self._get_source_mac(interface_name)
         elif mac_address:
@@ -110,7 +138,7 @@ class UDPConnection(socket.socket):
 
         Returns
         -------
-        
+
          - bytes: The data received from the Interface, or None on error
          - list: The State displayed in the Header of the UDPPacket, or None on error
         """
@@ -120,7 +148,7 @@ class UDPConnection(socket.socket):
 
         # since we listen for broadcasts, we also receive any packets we sent ourselves, so we have to filter out packets with our ip in src
         if addr[0] == "0.0.0.0": # Routerboard sets this as srcip
-            # The fist 6 bytes are the MAC Address of the source 
+            # The fist 6 bytes are the MAC Address of the source
             header_mac: bytes = data[:6]
             # From bytes 16 to 20 the states are displayed
             header_state: list[int] = [*struct.unpack("<HH", data[16:20])]
@@ -160,6 +188,26 @@ class UDPConnection(socket.socket):
         # 6. The State of the Client                (2 bytes)
         # 7. The data                               (? bytes)
         message = self.mac + dev_mac + struct.pack("<HHHH", 0, len(data), state[1], state[0]) + data
+
+        # If bind_ip is specified and platform supports it, use sendmsg to specify source IP
+        if self.bind_ip and IP_PKTINFO is not None:
+            try:
+                # Build control message for IP_PKTINFO
+                # struct in_pktinfo { ifindex, spec_dst, addr }
+                spec_dst = socket.inet_pton(socket.AF_INET, self.bind_ip)
+                ifindex = 0  # 0 means let kernel choose appropriate interface
+                # Format: I (4 bytes ifindex) + 4s (4 bytes spec_dst) + 4s (4 bytes addr, unused)
+                info = struct.pack('I4s4s', ifindex, spec_dst, b'\x00'*4)
+                ancdata = [(socket.IPPROTO_IP, IP_PKTINFO, info)]
+
+                # Send with control message to specify source IP
+                self.sendmsg([message], ancdata, 0, recv_addr)
+                return
+            except Exception as e:
+                self.logger.error(f"Failed to send with bind_ip {self.bind_ip}: {e}. Falling back to normal send.")
+                # Fall through to normal sendto
+
+        # Default behavior: use system-selected source IP
         self.sendto(message, recv_addr)
 
     def get_interface_info(self) -> InterfaceInfo:
@@ -181,7 +229,7 @@ class UDPConnection(socket.socket):
 
          - InterfaceInfo: A object with all the information of the Interface
         """
-        
+
         self.logger.debug("Searching for a Interface...")
         try:
             data, addr = self.recvfrom(self.MAX_BYTES_RECV)
