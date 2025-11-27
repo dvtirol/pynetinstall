@@ -55,6 +55,17 @@ Create `pynetinstall.ini` and upload it to the subdirectory. See the section
 [Using the default plugin]: ../README.md#using-the-default-plugin
 [Providing a custom plugin]: ../README.md#providing-a-custom-plugin
 
+#### **Network Interface Configuration Note**
+
+If your Linux host or Docker container interface is configured with multiple IP 
+addresses, you may need to utilize the `bind_ip` configuration option to force 
+pyNetinstall to use a specific local IP address for communication. This is crucial 
+to ensure PXE booting Mikrotik devices successfully receive the Netinstall service's 
+replies.
+
+Please refer to the main `README.md` for detailed instructions on using the `bind_ip` 
+parameter.
+
 
 ## Configure a Virtual Interface and Bridge
 

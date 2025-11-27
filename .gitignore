@@ -1,0 +1,9 @@
+# Python cache files
+__pycache__/
+*.pyc
+
+# Distribution/packaging
+.eggs/
+*.egg-info/
+dist/
+build/
