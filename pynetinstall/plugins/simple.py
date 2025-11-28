@@ -44,10 +44,26 @@ class Plugin:
             raise ValueError(f"The firmware file {self.firmware!r} does not exist")
         if self.default_config and not os.path.exists(self.default_config):
             raise ValueError(f"The config file {self.default_config!r} does not exist")
-        self.additional_packages = additional_packages.splitlines()
+
+        # Enhanced additional_packages parsing with flexible format support
+        # Supports both comma-separated and multi-line formats with automatic whitespace trimming
+        packages_list = []
+
+        if ',' in additional_packages:
+            # Comma-separated format: package1, package2, package3
+            comma_split = [pkg.strip() for pkg in additional_packages.split(',')]
+            packages_list.extend(comma_split)
+        else:
+            # Multi-line format (compatible with official documentation)
+            packages_list = [line.strip() for line in additional_packages.splitlines()]
+
+        # Filter out empty strings after trimming whitespace
+        self.additional_packages = [pkg for pkg in packages_list if pkg]
+
+        # Verify all additional packages exist
         for pkg in self.additional_packages:
             if not os.path.exists(pkg):
-                raise ValueError(f"The package {pkg} does not exist")
+                raise ValueError(f"The package {pkg!r} does not exist")
 
     def get_files(self, info: InterfaceInfo) -> tuple[str]:
         """
