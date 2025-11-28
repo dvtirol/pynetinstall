@@ -173,7 +173,7 @@ class Flasher:
 
         # extract version number. release_type is lowercase ASCII letter 'a'=alpha, 'b'=beta, 'c'=candidate, 'f'=final, other values are plain uint8
         patch, release_type, minor, major = header[0x24:0x28]
-        if map(int, info.min_os.split(".")) > (major, minor, patch):
+        if tuple(map(int, info.min_os.split("."))) > (major, minor, patch):
             release = {97: 'alpha', 98: 'beta', 99: 'rc', 102: ''}.get(release_type, '<unknown release type>')
             raise AbortFlashing(f"Verification failed: Tried to install RouterOS {major}.{minor}.{release}{patch}, but device requires at least {info.min_os}.")
 
