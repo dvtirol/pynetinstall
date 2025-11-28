@@ -22,11 +22,11 @@ with RouterOS.
 
 `pynetinstall [-c CONFIG] [-i INTERFACE] [-v]`
 
-*-c CONFIG*: Path to the configuration file. Defaults to `/etc/pynetinstall.ini`.  
-*-i INTERFACE*: MAC address or name of network interface. Defaults to `eth0`.  
-*-l LOGGING*: [Python logging configuration]. Defaults to stderr.  
-*-1*: Enable one-shot mode (exit after flashing once).  
-*-v*: Increase verbosity. Default is errors and warnings.  
+*-c CONFIG*: Path to the configuration file. Defaults to `/etc/pynetinstall.ini`.
+*-i INTERFACE*: MAC address or name of network interface. Defaults to `eth0`.
+*-l LOGGING*: [Python logging configuration]. Defaults to stderr.
+*-1*: Enable one-shot mode (exit after flashing once).
+*-v*: Increase verbosity. Default is errors and warnings.
 *-h*: Display help and exit.
 
 Inferring the MAC address though the interface name is only supported on Linux.
@@ -166,27 +166,41 @@ class Plugin:
 
         return firmware, configuration_or_None
 ```
+## **Binding Source IP Address (`bind_ip`)**
 
+For servers configured with multiple IP addresses on a single interface (e.g., a DHCP IP for 
+management and a static IP for Netinstall service), you can now specify the exact source IP 
+address pyNetinstall should use for its outgoing communication. This ensures devices correctly 
+receive replies after discovery.
+
+Add the `bind_ip` parameter to the `[pynetinstall]` section of your configuration file (`pynetinstall.ini`):
+
+```ini
+[pynetinstall]
+# Specify the source IP address for sending reply packets (Linux only)
+bind_ip = 10.10.10.1
+# ... other configurations ...
+```
 ## Extracting Boot Images
 
-You will need to aquire the boot images that the official netinstall tool uses.
+You will need to acquire the boot images that the official netinstall tool uses.
 These are not included as they are not licensed for re-distribution. However, it
 is fairly easy to extract them from the Mikrotik's Netinstall tool.
 
 **Note**: You must use at least the netinstall version that a device was shipped
 with. Check `/system routerboard print` -> `factory-firmware` if unsure.
 
-1. **Download `netinstall-<version>.zip` for Windows and extract it**  
+1. **Download `netinstall-<version>.zip` for Windows and extract it**
    The latest version that is linked in the [Downloads page] General section
    should work fine for all RouterOS versions. The [Download Archive] has links
    to older versions. <!-- for rOS 6.x no links are given, but the URLs follow
    the same schema as for 7.x. Both 32 and 64 bit versions should work. -->
 
-2. **Install the `pefile` and `pyelftools` Python packages**  
-   `pip install --user pefile pyelftools`  
+2. **Install the `pefile` and `pyelftools` Python packages**
+   `pip install --user pefile pyelftools`
 
-3. **Extract the images**  
-   `./docs/extract_bootimages.py netinstall64.exe`  
+3. **Extract the images**
+   `./docs/extract_bootimages.py netinstall64.exe`
    This will extract all images into the current directory.
 
 [Downloads page]: https://mikrotik.com/download

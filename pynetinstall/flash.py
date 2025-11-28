@@ -45,11 +45,11 @@ class Flasher:
     state : list
         The current state of the flash (default: [0, 0])
     plugin : Plugin
-        A Plugin to get the firmware and the configuration file 
+        A Plugin to get the firmware and the configuration file
         (Must include a .get_files(), has the Configuration as an attribute)
     logger : Logger
         Object to log LogRecords
-    
+
     MAX_BYTES : int
         How many bytes the connection can receive at once (default: 1024)
 
@@ -72,10 +72,10 @@ class Flasher:
 
     do_file(file, max_pos, file_name) -> None
         Send a `file` over the Connection
-    
+
     do_files() -> None
         Get the files from the `plugin` and execute do_file() for every file
-    
+
     wait() -> None
         Wait for something
 
@@ -91,7 +91,7 @@ class Flasher:
                  logger: Logger = None) -> None:
         """
         Initialization of a new Flasher
-        
+
         Loading the Configuration
         Creating a Connection to the Interface
 
@@ -131,7 +131,7 @@ class Flasher:
         FileNotFoundError
             If the `config_file` does not exist or is not found
         """
-        
+
         cparser = ConfigParser()
         if not cparser.read(config_file):
             raise FatalError(f"Configuration File ({config_file}) not found")
@@ -182,12 +182,12 @@ class Flasher:
     def write(self, data: bytes) -> None:
         """
         Write the `data` to the UDPConnection
-        
+
         This function is used to pass the value of `state` to the write function of the connection.
 
         Arguments
         ---------
-        
+
         data : bytes
             The data you want to write to the connection as bytes
         """
@@ -196,8 +196,8 @@ class Flasher:
     def read(self) -> tuple[bytes, list]:
         """
         Read `data` from the UDPConnection
-        
-        This function is used to pass the value of `state` and `dev_mac` 
+
+        This function is used to pass the value of `state` and `dev_mac`
         to the read function of the connection.
 
         Returns
@@ -386,7 +386,7 @@ class Flasher:
         Returns
         -------
 
-         - BufferedReader or HTTPResponse: object with a .read() function 
+         - BufferedReader or HTTPResponse: object with a .read() function
          - str: The name of the file
          - int: The size of the file
 
@@ -472,8 +472,25 @@ class FlashInterface:
         """
         self.logger = Logger(log_level)
         self.config_file = config_file
+
+        # Read configuration file to get bind_ip parameter
+        bind_ip = None
         try:
-            self.connection = UDPConnection(logger=self.logger, interface_name=interface_name, mac_address=mac_address)
+            cparser = ConfigParser()
+            if cparser.read(config_file):
+                bind_ip = cparser.get("pynetinstall", "bind_ip", fallback=None)
+                if bind_ip:
+                    self.logger.debug(f"Using bind_ip: {bind_ip}")
+        except Exception as e:
+            self.logger.error(f"Failed to read bind_ip from config: {e}")
+
+        try:
+            self.connection = UDPConnection(
+                logger=self.logger,
+                interface_name=interface_name,
+                mac_address=mac_address,
+                bind_ip=bind_ip  # Pass bind_ip parameter
+            )
         except (OSError, ValueError) as e:
             raise FatalError(f"{e} ({interface_name or mac_address})")
 
