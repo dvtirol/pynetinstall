@@ -20,7 +20,7 @@ with RouterOS.
 
 ## Usage
 
-`python -m pynetinstall [-c CONFIG] [-i INTERFACE] [-v]`
+`pynetinstall [-c CONFIG] [-i INTERFACE] [-v]`
 
 *-c CONFIG*: Path to the configuration file. Defaults to `/etc/pynetinstall.ini`.  
 *-i INTERFACE*: MAC address or name of network interface. Defaults to `eth0`.  

@@ -23,6 +23,6 @@ setup(
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     ],
     entry_points={
-        "console_scripts": ["pynetinstall = pynetinstall.__main__"]
+        "console_scripts": ["pynetinstall = pynetinstall.__main__:main"]
     }
 )
