@@ -121,7 +121,7 @@ the container (as specified in Dockerfile), then create the container from the
 /container mounts
 add dst=/config name=pynetinstall-config src=/netinstall
 /container
-add interface=vethDocker logging=yes start-on-boot=yes mounts=pynetinstall-config file=pynetinstall-arm.tar
+add interface=vethNetinstall logging=yes start-on-boot=yes mounts=pynetinstall-config file=pynetinstall-arm.tar
 start 0
 ```
 
