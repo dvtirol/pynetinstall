@@ -11,7 +11,7 @@ RUN apk update && apk add python3
 COPY pynetinstall /pynetinstall
 
 VOLUME /config
-ENTRYPOINT /usr/bin/python3 -m pynetinstall -c /config/pynetinstall.ini -v
+ENTRYPOINT /usr/bin/python3 -m pynetinstall -c /config/pynetinstall.ini -i "${INTERFACE:-eth0}" -v
 ```
 
 It can be built using podman and buildah like so:
@@ -120,8 +120,10 @@ the container (as specified in Dockerfile), then create the container from the
 ```
 /container mounts
 add dst=/config name=pynetinstall-config src=/netinstall
+/container envs
+add key=INTERFACE list=envNetinstall value=vethNetinstall
 /container
-add interface=vethNetinstall logging=yes start-on-boot=yes mounts=pynetinstall-config file=pynetinstall-arm.tar
+add interface=vethNetinstall envlists=envNetinstall logging=yes start-on-boot=yes mounts=pynetinstall-config file=pynetinstall-arm.tar
 start 0
 ```
 
