@@ -344,7 +344,7 @@ class Flasher:
         Sends the npk and the rsc file to the Connection using the do_files() Function
         It requests both files from the get_files() Function of the Plugin
         """
-        *npks, rsc = self.plugin.get_files(self.info)
+        *npks, rsc, device_mode = self.plugin.get_files(self.info)
         if not all(npks):
             raise AbortFlashing("Plugin did not return RouterOS or an additional package is 'None'.")
         for npk in npks:
@@ -372,6 +372,18 @@ class Flasher:
 
             self.do(b"", b"RETR")
             self.logger.debug("Done with the Configuration File")
+    
+        # Send the device mode file if available. This file is used to set the device mode and is optional.
+        if device_mode:
+            device_mode_file, device_mode_file_name, device_mode_file_size = self.resolve_file_data(device_mode)
+            self.do(bytes(f"FILE\nmode.scr\n{str(device_mode_file_size)}\n", "utf-8"), b"RETR")
+            self.logger.info(f"Uploading {device_mode_file_name}")
+            self.do_file(device_mode_file, device_mode_file_size, device_mode_file_name)
+
+            self.do(b"", b"RETR")
+            self.logger.debug("Done with the device mode File")
+
+        
 
     def resolve_file_data(self, data) -> tuple[BufferedReader or HTTPResponse, str, int]:
         """
