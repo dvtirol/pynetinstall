@@ -36,6 +36,7 @@ class Plugin:
     def __init__(self, config: ConfigParser):
         self.firmware = config.get("pynetinstall", "firmware", fallback=None)
         self.default_config = config.get("pynetinstall", "config", fallback=None)
+        self.device_mode_script = config.get("pynetinstall", "device_mode", fallback=None)
         additional_packages = config.get("pynetinstall", "additional_packages", fallback="")
 
         if not self.firmware:
@@ -44,6 +45,8 @@ class Plugin:
             raise ValueError(f"The firmware file {self.firmware!r} does not exist")
         if self.default_config and not os.path.exists(self.default_config):
             raise ValueError(f"The config file {self.default_config!r} does not exist")
+        if self.device_mode_script and not os.path.exists(self.device_mode_script):
+            raise ValueError(f"The device mode script {self.device_mode_script!r} does not exist")
         self.additional_packages = additional_packages.splitlines()
         for pkg in self.additional_packages:
             if not os.path.exists(pkg):
@@ -66,4 +69,4 @@ class Plugin:
            If firmware is None, an error is assumed. If config is None, only
            the firmware will be installed.
         """
-        return self.firmware, *self.additional_packages, self.default_config
+        return self.firmware, *self.additional_packages, self.default_config, self.device_mode_script
