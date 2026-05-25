@@ -96,7 +96,7 @@ tftp-no-blocksize
 pyNetinstall includes a simple plugin that serves a single firmware and
 optionally a single configuration file.
 
-The default plugin reads the `firmware` and `config` parameters from
+The default plugin reads the `firmware`, `config` and `device_mode` parameters from
 `pynetinstall.ini`. To disable uploading a config file and use MikroTik's
 default config instead, just remove the line from `pynetinstall.ini`. To not
 upload any config at all (and configure the device through MAC-Telnet/MAC-Winbox
@@ -107,6 +107,7 @@ Additional packages can be specified one per line, each indented by some spaces.
 [pynetinstall]
 firmware=<PATH_TO_ROUTEROS_NPK>
 config=<PATH_TO_CONFIG_RSC>
+device_mode=<PATH_TO_MODE_RSC>
 additional_packages=
     <ADDITIONAL_PACKAGE>
     <ADDITIONAL_PACKAGE>
@@ -131,12 +132,12 @@ plugin=<PYTHON_MODULE>:<CLASS_NAME>
 ```
 
 Such a plugin is simply a python class that implements `get_files(info)`,
-returning a tuple (firmware, config). Firmware and config may be returned as a
+returning a tuple (firmware, config, device_mode_script). Firmware and config may be returned as a
 path on disk (string), an HTTP  or HTTPS URL (string), or a [file object] as
 returned by e.g. `open()`.
 
 Additionally, config may be `None` if no custom default configuration is
-desired. If firmware is `None`, an error is assumed and the current flashing
+desired. The same applies to the device mode script if changing the mode is not desired. If firmware is `None`, an error is assumed and the current flashing
 process is aborted and pyNetinstall resets for the next flashing cycle.
 
 `get_files()` is passed an InterfaceInfo object, which contains information on
@@ -164,7 +165,7 @@ class Plugin:
         # info.lic_id       = installed license id
         # info.lic_key      = installed license key
 
-        return firmware, configuration_or_None
+        return firmware, configuration_or_None, modescript_or_None
 ```
 
 ## Extracting Boot Images
@@ -191,6 +192,10 @@ with. Check `/system routerboard print` -> `factory-firmware` if unsure.
 
 [Downloads page]: https://mikrotik.com/download
 [Download Archive]: https://mikrotik.com/download/archive
+
+## Notes about device-mode
+
+Boot images and RouterOS packages must be at least version 7.22 or higher in order to set device-mode.
 
 ## Acknowledgements
 
