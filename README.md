@@ -100,6 +100,12 @@ upload any config at all (and configure the device through MAC-Telnet/MAC-Winbox
 manually afterwards), specify a config file containing a single newline char.
 Additional packages can be specified one per line, each indented by some spaces.
 
+Since RouterOS 7.22, one can also specify which additional device modes to
+enable. Simply list the modes to enable below. Modes prefixed by an exclamation
+mark are disabled instead. Modes not specified will not get changed. It is also
+optionally possible to set the mode profile (e.g. `basic` or `advanced`) by
+prefixing it with an asterisk.
+
 ```
 [pynetinstall]
 firmware=<PATH_TO_ROUTEROS_NPK>
@@ -108,6 +114,12 @@ additional_packages=
     <ADDITIONAL_PACKAGE>
     <ADDITIONAL_PACKAGE>
     <ADDITIONAL_PACKAGE>
+device_mode=
+    *<MODE_PROFILE>
+    <MODE_TO_ENABLE>
+    <MODE_TO_ENABLE>
+    !<MODE_TO_DISABLE>
+    !<MODE_TO_DISABLE>
 ```
 
 ## Providing a custom plugin
@@ -136,15 +148,22 @@ Additionally, config may be `None` if no custom default configuration is
 desired. If firmware is `None`, an error is assumed and the current flashing
 process is aborted and pyNetinstall resets for the next flashing cycle.
 
-`get_files()` is passed an InterfaceInfo object, which contains information on
-the connected RouterBoard. The available attributes are described in the example
-below.
+When using Netinstall Boot Images and RouterOS 7.22 and newer, a method
+`get_mode(info)` can be used to set the [device mode]. It shall return a 1-tuple
+of a path to a file on disk, an HTTP(s) URL or a [file object]. The returned
+file-like object should contain a single configuration statement in the form
+`/system device-mode update ...`.
+
+`get_files()` and `get_mode()` are passed an InterfaceInfo object, which
+contains information on the connected RouterBoard. The available attributes are
+described in the example below.
 
 Implementing `__init__(config)` is optional and only required if access
 to `pynetinstall.ini` is needed through the passed [ConfigParser] object.
 Exceptions raised during `__init__()` will result in pyNetinstall exiting.
 
 [file object]: https://docs.python.org/3/glossary.html#term-file-object
+[device mode]: https://manual.mikrotik.com/docs/system-information-and-utilities/device-mode/
 [ConfigParser]: https://docs.python.org/3/library/configparser.html#configparser.ConfigParser
 
 ```
