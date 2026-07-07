@@ -4,7 +4,7 @@ import sys
 import time
 import importlib
 
-from io import BufferedReader
+from io import BufferedReader, IOBase
 from urllib import request
 from http.client import HTTPResponse
 from os.path import getsize, basename
@@ -345,6 +345,8 @@ class Flasher:
         It requests both files from the get_files() Function of the Plugin
         """
         *npks, rsc = self.plugin.get_files(self.info)
+        device_mode, = self.plugin.get_mode(self.info) if hasattr(self.plugin, 'get_mode') else (None,)
+
         if not all(npks):
             raise AbortFlashing("Plugin did not return RouterOS or an additional package is 'None'.")
         for npk in npks:
@@ -363,9 +365,21 @@ class Flasher:
 
         self.logger.debug("Done with the Firmware")
 
+        # Send a "mode file" that is allowed to update /system/device-mode without confirmation
+        if device_mode:
+            mode_file, mode_file_name, mode_file_size = self.resolve_file_data(device_mode)
+            if not mode_file_name: mode_file_name = "mode file"
+            self.do(bytes(f"FILE\nmode.scr\n{str(mode_file_size)}\n", "utf-8"), b"RETR")
+            self.logger.info(f"Uploading {mode_file_name}")
+            self.do_file(mode_file, mode_file_size, mode_file_name)
+
+            self.do(b"", b"RETR")
+            self.logger.debug("Done with the Device Mode File")
+
         # Send the initial config file. routerOS expects filename to be autorun.scr.
         if rsc:
             rsc_file, rsc_file_name, rsc_file_size = self.resolve_file_data(rsc)
+            if not rsc_file_name: rsc_file_name = "config file"
             self.do(bytes(f"FILE\nautorun.scr\n{str(rsc_file_size)}\n", "utf-8"), b"RETR")
             self.logger.info(f"Uploading {rsc_file_name}")
             self.do_file(rsc_file, rsc_file_size, rsc_file_name)
@@ -396,13 +410,18 @@ class Flasher:
         Exception
             data does not result in any data
         """
-        # data is already Readable
         if isinstance(data, BufferedReader):
-            # Working
+            # actual file on disk
             size = getsize(data.name)
             name = basename(data.name)
             file = data
             self.logger.debug("Resolved File-Data from the BufferedReader")
+        elif isinstance(data, IOBase):
+            # BytesIO or similar
+            size = len(data.getvalue()) # should work with BytesIO and StringIO
+            name = None
+            file = data
+            self.logger.debug("Resolved File-Data from the IOBase")
         else:
             # data is a url to a file
             try:
