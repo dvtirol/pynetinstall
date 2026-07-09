@@ -66,11 +66,8 @@ example.
 ## Deploy on Linux (dnsmasq)
 
 Setup `dnsmasq` to provide DHCP and TFTP, so your RouterBoard can boot via
-BOOTP. Boot images can be obtained either by [extracting them from
-`netinstall.exe`], or alternatively, some can be downloaded from the
-unaffiliated [rfdrake/MTM-Mikrotik] repo.
+BOOTP. Boot images can be obtained by [extracting them from `netinstall.exe`].
 
-[rfdrake/MTM-Mikrotik]: https://github.com/rfdrake/MTM-Mikrotik/tree/master/Docs/Examples/TFTP-Images
 [extracting them from `netinstall.exe`]: #extracting-boot-images
 
 Below is a sample dnsmasq configuration. Depending on the CPU architecture of
