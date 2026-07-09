@@ -58,9 +58,9 @@ can be deployed directly on another RouterBoard running RouterOS 7.4 or higher.
 This process is a relatively involved; see [pyNetinstall on RouterOS] for an
 example.
 
-[container]: https://help.mikrotik.com/docs/display/ROS/Container
-[DHCP]: https://help.mikrotik.com/docs/display/ROS/DHCP#DHCP-DHCPServer
-[TFTP]: https://help.mikrotik.com/docs/display/ROS/TFTP
+[container]: https://manual.mikrotik.com/docs/containers/
+[DHCP]: https://manual.mikrotik.com/docs/network-management/dhcp/#dhcp-server
+[TFTP]: https://manual.mikrotik.com/docs/system-information-and-utilities/tftp
 [pyNetinstall on RouterOS]: docs/routeros.md
 
 ## Deploy on Linux (dnsmasq)
